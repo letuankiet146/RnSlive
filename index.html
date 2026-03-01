@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support & Resistance Tracker</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="config-panel">
+            <h2>Configuration</h2>
+            
+            <div class="config-section">
+                <h3>Timeframe</h3>
+                <div class="timeframe-buttons">
+                    <button class="timeframe-btn active" data-timeframe="1">1m</button>
+                    <button class="timeframe-btn" data-timeframe="5">5m</button>
+                    <button class="timeframe-btn" data-timeframe="15">15m</button>
+                    <button class="timeframe-btn" data-timeframe="30">30m</button>
+                    <button class="timeframe-btn" data-timeframe="60">1h</button>
+                </div>
+            </div>
+            
+            <div class="config-item">
+                <label>Update Interval</label>
+                <span id="interval-display">1s</span>
+            </div>
+            <div class="config-item">
+                <label>Next Candle In</label>
+                <span id="countdown-display">--</span>
+            </div>
+            <div class="config-item">
+                <label>Current Price</label>
+                <span id="current-price">--</span>
+            </div>
+            <div class="config-item">
+                <label>Resistance Level</label>
+                <span id="resistance-level" class="resistance">--</span>
+            </div>
+            <div class="config-item">
+                <label>Support Level</label>
+                <span id="support-level" class="support">--</span>
+            </div>
+            <div class="config-item">
+                <label>Data Points</label>
+                <span id="data-count">0 / 1800</span>
+            </div>
+        </aside>
+        
+        <main class="chart-area">
+            <h1>Real-Time Price Chart</h1>
+            <div id="chart-wrapper">
+                <div id="chart"></div>
+                <div id="price-countdown"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+I want to create a web application. Let’s focus on the main features first.
+
+Overview: This app will help traders see resistance and support levels in real time. Imagine the user opens the website. On the left side, there is a configuration panel. The main area displays a candlestick chart. On the candlestick chart, the support and resistance levels are shown in real time.
+
+For now, we will focus only on building the website UI using a mock API. We assume the mock API endpoint is /snl/my-api and returns three values: current price, top price (resistance level), and bottom price (support level).
+
+Do not implement the mock API. Just build the UI and use mock data for display. I will replace the mock API with my real API in the product. The mock data should contain 100 items. Each item should include a top price (resistance level), a middle price (current price), and a bottom price (support level), ensuring that resistance price > current price > support level. Use this mock data.
+
+Assume that one item from the 100 mock data entries is retrieved every 2 seconds and displayed on the UI. The UI should display the current price as a continuously updating candlestick chart, where a new candlestick is created every 10 seconds. The resistance and support prices should be updated each time a new item arrives, while the candlestick chart continues to reflect the live price feed.
