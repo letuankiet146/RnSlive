@@ -1,6 +1,5 @@
 console.log('Script loaded!');
 
-// Generate mock data: 1800 items (30 minutes at 1s intervals)
 function generateMockData() {
     const data = [];
     let basePrice = 100;
@@ -28,7 +27,6 @@ let candleSeries = null;
 let resistanceLine = null;
 let supportLine = null;
 
-// Application state
 const state = {
     mockData: [],
     dataIndex: 0,
@@ -39,12 +37,10 @@ const state = {
     startTime: Date.now()
 };
 
-// Calculate ticks per candle based on timeframe
 function getTicksPerCandle() {
     return state.timeframeMinutes * 60;
 }
 
-// Format time for display
 function formatTime(timestamp) {
     const date = new Date(timestamp * 1000);
     const options = { 
@@ -59,7 +55,6 @@ function formatTime(timestamp) {
     return date.toLocaleString('en-GB', options);
 }
 
-// Update countdown timer
 function updateCountdown() {
     const ticksPerCandle = getTicksPerCandle();
     const ticksInCurrentCandle = state.dataIndex % ticksPerCandle;
@@ -72,7 +67,6 @@ function updateCountdown() {
         `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Aggregate 1-second candles into larger timeframe
 function aggregateCandles(timeframeMinutes) {
     const ticksPerCandle = timeframeMinutes * 60;
     const aggregated = [];
@@ -93,7 +87,6 @@ function aggregateCandles(timeframeMinutes) {
     return aggregated;
 }
 
-// Update countdown display on price scale
 function updatePriceCountdown() {
     const countdownEl = document.getElementById('price-countdown');
     if (!countdownEl) return;
@@ -104,7 +97,6 @@ function updatePriceCountdown() {
         return;
     }
     
-    // Calculate countdown
     const ticksPerCandle = getTicksPerCandle();
     const ticksInCurrentCandle = state.dataIndex % ticksPerCandle;
     const secondsRemaining = ticksPerCandle - ticksInCurrentCandle;
@@ -112,21 +104,18 @@ function updatePriceCountdown() {
     const seconds = secondsRemaining % 60;
     const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
-    // Get current price
     const latestCandle = aggregated[aggregated.length - 1];
     const currentPrice = latestCandle.close;
     
-    // Calculate position based on price
     try {
-        const priceScale = chart.priceScale('right');
-        const y = priceScale.priceToCoordinate(currentPrice);
+        const coordinate = candleSeries.priceToCoordinate(currentPrice);
         
-        if (y !== null && y !== undefined) {
-            countdownEl.textContent = countdownText;
-            countdownEl.style.top = `${y + 25}px`;
+        if (coordinate !== null && coordinate !== undefined) {
+            // Display price and countdown together
+            countdownEl.innerHTML = `<div style="font-size: 16px;">${currentPrice.toFixed(2)}</div><div style="font-size: 12px; margin-top: 2px;">${countdownText}</div>`;
+            countdownEl.style.top = `${coordinate - 20}px`;
             countdownEl.style.display = 'block';
             
-            // Change color based on candle direction
             if (latestCandle.close >= latestCandle.open) {
                 countdownEl.style.background = '#26a69a';
             } else {
@@ -138,30 +127,22 @@ function updatePriceCountdown() {
     }
 }
 
-// Redraw chart with current timeframe
 function redrawChart() {
     const aggregated = aggregateCandles(state.timeframeMinutes);
     candleSeries.setData(aggregated);
-    
-    // Update countdown display on price scale
     updatePriceCountdown();
-    
-    // Update countdown
     updateCountdown();
 }
 
-// Initialize everything
 function init() {
     console.log('Initializing...');
     
-    // Generate mock data
     state.mockData = generateMockData();
     console.log('Mock data generated:', state.mockData.length, 'items');
     
-    // Check if library is loaded
     if (typeof LightweightCharts === 'undefined') {
         console.error('LightweightCharts library not loaded!');
-        alert('Error: Chart library failed to load. Check your internet connection.');
+        alert('Error: Chart library failed to load.');
         return;
     }
     
@@ -171,7 +152,6 @@ function init() {
         return;
     }
     
-    // Initialize chart
     try {
         chart = LightweightCharts.createChart(chartContainer, {
             layout: {
@@ -191,9 +171,7 @@ function init() {
                 borderColor: '#2a2a3e',
             },
             localization: {
-                timeFormatter: (timestamp) => {
-                    return formatTime(timestamp);
-                },
+                timeFormatter: (timestamp) => formatTime(timestamp),
             },
             crosshair: {
                 mode: LightweightCharts.CrosshairMode.Normal,
@@ -202,7 +180,6 @@ function init() {
             height: chartContainer.clientHeight,
         });
         
-        // Add candlestick series
         candleSeries = chart.addCandlestickSeries({
             upColor: '#26a69a',
             downColor: '#ef5350',
@@ -211,7 +188,6 @@ function init() {
             wickDownColor: '#ef5350',
         });
         
-        // Subscribe to crosshair move for tooltip
         chart.subscribeCrosshairMove((param) => {
             if (param.time) {
                 const timeStr = formatTime(param.time);
@@ -236,7 +212,6 @@ function init() {
         return;
     }
     
-    // Handle window resize
     window.addEventListener('resize', () => {
         if (chart && chartContainer) {
             chart.applyOptions({
@@ -247,35 +222,26 @@ function init() {
         }
     });
     
-    // Setup timeframe buttons
     document.querySelectorAll('.timeframe-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            // Update active state
             document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Change timeframe
             const newTimeframe = parseInt(btn.dataset.timeframe);
             changeTimeframe(newTimeframe);
         });
     });
     
-    // Start updating
     console.log('Starting data feed...');
     startDataFeed();
 }
 
-// Change timeframe without resetting data
 function changeTimeframe(minutes) {
     console.log('Changing timeframe to', minutes, 'minutes');
-    
     state.timeframeMinutes = minutes;
-    
-    // Redraw chart with new timeframe
     redrawChart();
 }
 
-// Start data feed
 function startDataFeed() {
     updateChart();
     state.intervalId = setInterval(updateChart, 1000);
@@ -284,11 +250,10 @@ function startDataFeed() {
     state.countdownId = setInterval(updateCountdown, 1000);
 }
 
-// Update UI and chart
 function updateChart() {
     try {
         if (state.dataIndex >= state.mockData.length) {
-            console.log('All 1800 data points processed. Stopping updates.');
+            console.log('All 1800 data points processed.');
             clearInterval(state.intervalId);
             clearInterval(state.countdownId);
             return;
@@ -298,13 +263,11 @@ function updateChart() {
         const price = current.middle;
         const time = Math.floor((state.startTime + state.dataIndex * 1000) / 1000);
         
-        // Update config panel
         document.getElementById('current-price').textContent = `$${current.middle}`;
         document.getElementById('resistance-level').textContent = `$${current.top}`;
         document.getElementById('support-level').textContent = `$${current.bottom}`;
         document.getElementById('data-count').textContent = `${state.dataIndex + 1} / 1800`;
         
-        // Update resistance line with 50% opacity
         if (resistanceLine) {
             candleSeries.removePriceLine(resistanceLine);
         }
@@ -317,7 +280,6 @@ function updateChart() {
             title: 'R',
         });
         
-        // Update support line with 50% opacity
         if (supportLine) {
             candleSeries.removePriceLine(supportLine);
         }
@@ -330,7 +292,6 @@ function updateChart() {
             title: 'S',
         });
         
-        // Store as 1-second candle
         const newCandle = {
             time: time,
             open: price,
@@ -340,7 +301,6 @@ function updateChart() {
         };
         state.allCandles.push(newCandle);
         
-        // Redraw chart with current timeframe
         redrawChart();
         
         state.dataIndex++;
@@ -350,7 +310,6 @@ function updateChart() {
     }
 }
 
-// Wait for everything to load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {

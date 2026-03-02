@@ -128,13 +128,14 @@ body {
     right: 0;
     background: #26a69a;
     color: white;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 6px 10px;
+    font-size: 14px;
     font-weight: bold;
     border-radius: 4px;
     display: none;
     z-index: 10;
     pointer-events: none;
-    min-width: 50px;
+    min-width: 70px;
     text-align: center;
+    line-height: 1.4;
 }
