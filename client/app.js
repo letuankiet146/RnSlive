@@ -111,16 +111,10 @@ function formatTime(timestamp) {
 
 
 function updateCountdown() {
-    const ticksPerCandle = getTicksPerCandle();
-    const ticksInCurrentCandle = state.dataIndex % ticksPerCandle;
-    const secondsRemaining = ticksPerCandle - ticksInCurrentCandle;
-
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-
-    document.getElementById('countdown-display').textContent =
-        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    // Countdown display is handled by updatePriceCountdown()
+    // This function is kept for compatibility with the interval timer
 }
+
 
 function aggregateCandles(timeframeMinutes) {
     const ticksPerCandle = timeframeMinutes * 60;
