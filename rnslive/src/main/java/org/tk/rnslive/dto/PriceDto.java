@@ -13,4 +13,30 @@ public class PriceDto {
         this.bottom = bottom;
         this.timestamp = timestamp;
     }
+
+    public double getTop() {
+        return top;
+    }
+
+    public double getMiddle() {
+        return middle;
+    }
+
+    public double getBottom() {
+        return bottom;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    @Override
+    public String toString() {
+        return "PriceDto{" +
+                "top=" + top +
+                ", middle=" + middle +
+                ", bottom=" + bottom +
+                ", timestamp=" + timestamp +
+                '}';
+    }
 }

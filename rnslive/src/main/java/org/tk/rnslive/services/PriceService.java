@@ -31,7 +31,6 @@ public class PriceService {
     }
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final Random random = new Random();
 
 
     @PostConstruct
