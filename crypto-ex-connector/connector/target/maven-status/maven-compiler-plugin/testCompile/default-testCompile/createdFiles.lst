@@ -1,0 +1,10 @@
+org/ltk/connector/requestor/api/BinaneFutureRequesterTest.class
+org/ltk/connector/utils/UrlBuilderTest.class
+org/ltk/connector/requestor/ws/BingXFutureWebSocketTest.class
+org/ltk/connector/service/ExchangeServiceImplTest.class
+org/ltk/connector/utils/HashAlgorithmTest.class
+org/ltk/connector/requestor/ws/BybitFutureWebSocketTest.class
+org/ltk/connector/requestor/ws/BinanceFutureWebSocketTest.class
+org/ltk/connector/requestor/api/BingXFutureRequesterTest.class
+org/ltk/connector/requestor/api/OKXFutureRequesterTest.class
+org/ltk/connector/requestor/ws/OKXFutureWebSocketTest.class
