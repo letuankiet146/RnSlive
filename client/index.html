@@ -11,7 +11,7 @@
     <div class="container">
         <aside class="config-panel">
             <h2>Configuration</h2>
-            
+
             <div class="config-section">
                 <h3>Timeframe</h3>
                 <div class="timeframe-buttons">
@@ -22,7 +22,7 @@
                     <button class="timeframe-btn" data-timeframe="60">1h</button>
                 </div>
             </div>
-            
+
             <div class="config-item">
                 <label>Update Interval</label>
                 <span id="interval-display">1s</span>
@@ -43,8 +43,12 @@
                 <label>Data Points</label>
                 <span id="data-count">0 / 1800</span>
             </div>
+            <div class="config-item">
+                <label>Next Candle In</label>
+                <span id="countdown-display">00:00:00</span>
+            </div>
         </aside>
-        
+
         <main class="chart-area">
             <h1>Real-Time Price Chart</h1>
             <div id="chart-wrapper">
@@ -53,7 +57,7 @@
             </div>
         </main>
     </div>
-    
+
     <script src="app.js"></script>
 </body>
 </html>

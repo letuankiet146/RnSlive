@@ -1,8 +1,36 @@
+function getRemainingTime(currentDateTime, timeframe) {
+    const now = new Date(currentDateTime);
+    // Convert timeframe to milliseconds
+    const unit = timeframe.slice(-1);
+    const value = parseInt(timeframe.slice(0, -1));
+    let timeframeMs;
+
+    if (unit === 'm') {
+        timeframeMs = value * 60 * 1000;
+    } else if (unit === 'h') {
+        timeframeMs = value * 60 * 60 * 1000;
+    } else {
+        throw new Error("Unsupported timeframe format. Use 'm' or 'h'.");
+    }
+
+    const currentMs = now.getTime();
+    // Find remainder inside current block
+    const remainder = currentMs % timeframeMs;
+    const remainingMs = timeframeMs - remainder;
+
+    // Convert to readable format
+    const seconds = Math.floor((remainingMs / 1000) % 60);
+    const minutes = Math.floor((remainingMs / (1000 * 60)) % 60);
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+
+    return { totalMilliseconds: remainingMs, hours, minutes, seconds };
+}
+
 console.log('Script loaded!');
 
 function connectSSE() {
     const eventSource = new EventSource('http://localhost:8080/prices');
-    
+
     eventSource.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
@@ -11,17 +39,18 @@ function connectSSE() {
             console.error('Error parsing SSE data:', error);
         }
     };
-    
+
     eventSource.onerror = (error) => {
         console.error('SSE connection error:', error);
         eventSource.close();
         // Attempt to reconnect after 5 seconds
+
         setTimeout(() => {
             console.log('Attempting to reconnect...');
             connectSSE();
         }, 5000);
     };
-    
+
     return eventSource;
 }
 
@@ -46,7 +75,6 @@ function handlePriceUpdate(data) {
         price: data.top,
         color: 'rgba(255, 107, 107, 0.5)',
         lineWidth: 2,
-
         lineStyle: LightweightCharts.LineStyle.Dashed,
         axisLabelVisible: true,
         title: 'R',
@@ -109,12 +137,23 @@ function formatTime(timestamp) {
     return date.toLocaleString('en-GB', options);
 }
 
-
 function updateCountdown() {
-    // Countdown display is handled by updatePriceCountdown()
-    // This function is kept for compatibility with the interval timer
-}
+    const now = new Date();
+    const timeframeStr = `${state.timeframeMinutes}m`;
+    const remaining = getRemainingTime(now, timeframeStr);
 
+    // Debug logging
+    console.log('Current time:', now.toISOString(), '| Timeframe:', timeframeStr, '| Remaining:', remaining);
+
+    // Format countdown display
+    const countdownText = `${remaining.hours.toString().padStart(2, '0')}:${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+
+    // Update the countdown element if it exists
+    const countdownEl = document.getElementById('countdown-display');
+    if (countdownEl) {
+        countdownEl.textContent = countdownText;
+    }
+}
 
 function aggregateCandles(timeframeMinutes) {
     const ticksPerCandle = timeframeMinutes * 60;
@@ -146,12 +185,10 @@ function updatePriceCountdown() {
         return;
     }
 
-    const ticksPerCandle = getTicksPerCandle();
-    const ticksInCurrentCandle = state.dataIndex % ticksPerCandle;
-    const secondsRemaining = ticksPerCandle - ticksInCurrentCandle;
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    // Use getRemainingTime instead of tick counting
+    const timeframeStr = `${state.timeframeMinutes}m`;
+    const remaining = getRemainingTime(new Date(), timeframeStr);
+    const countdownText = `${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
 
     const latestCandle = aggregated[aggregated.length - 1];
     const currentPrice = latestCandle.close;
@@ -181,7 +218,6 @@ function redrawChart() {
     updatePriceCountdown();
     updateCountdown();
 }
-
 
 function init() {
     console.log('Initializing...');
@@ -280,7 +316,7 @@ function init() {
 
     console.log('Connecting to SSE endpoint...');
     eventSource = connectSSE();
-    
+
     updateCountdown();
     state.countdownId = setInterval(updateCountdown, 1000);
 }
