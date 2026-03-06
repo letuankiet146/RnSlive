@@ -1,5 +1,0 @@
-logging:
-  level:
-    org.ltk: DEBUG
-  file:
-    name: logs/app.log
