@@ -1,6 +1,7 @@
 package org.ltk.connector.service;
 
 import org.ltk.connector.client.ExchangeName;
+import org.ltk.connector.component.Kline;
 import org.ltk.model.exchange.depth.Depth;
 import org.ltk.model.exchange.order.Order;
 import org.ltk.model.exchange.order.SideOrder;
@@ -26,7 +27,7 @@ public interface ExchangeService {
     double getMarkPrice(ExchangeName exchangeName, String symbol);
     void setLeverage(ExchangeName exchangeName, String symbol, int leverage, String positionSide);
     Depth getDepth(ExchangeName exchangeName, String symbol, int limit);
-
+    List<Kline> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit);
     void subscribeMarkPrice(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeDepth(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeTradeDetail(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);

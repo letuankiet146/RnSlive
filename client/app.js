@@ -156,21 +156,43 @@ function updateCountdown() {
 }
 
 function aggregateCandles(timeframeMinutes) {
-    const ticksPerCandle = timeframeMinutes * 60;
+    if (state.allCandles.length === 0) return [];
+
+    const timeframeMs = timeframeMinutes * 60 * 1000;
     const aggregated = [];
+    const candleMap = new Map();
 
-    for (let i = 0; i < state.allCandles.length; i += ticksPerCandle) {
-        const chunk = state.allCandles.slice(i, i + ticksPerCandle);
-        if (chunk.length === 0) continue;
+    // Group candles by their timeframe boundary
+    for (const candle of state.allCandles) {
+        const candleMs = candle.time * 1000;
+        // Calculate the start of the timeframe period this candle belongs to
+        const periodStart = Math.floor(candleMs / timeframeMs) * timeframeMs;
+        const periodStartSeconds = Math.floor(periodStart / 1000);
 
-        const open = chunk[0].open;
-        const close = chunk[chunk.length - 1].close;
-        const high = Math.max(...chunk.map(c => c.high));
-        const low = Math.min(...chunk.map(c => c.low));
-        const time = chunk[0].time;
-
-        aggregated.push({ time, open, high, low, close });
+        if (!candleMap.has(periodStartSeconds)) {
+            candleMap.set(periodStartSeconds, []);
+        }
+        candleMap.get(periodStartSeconds).push(candle);
     }
+
+    // Convert grouped candles into aggregated candles
+    for (const [periodStart, candles] of candleMap.entries()) {
+        const open = candles[0].open;
+        const close = candles[candles.length - 1].close;
+        const high = Math.max(...candles.map(c => c.high));
+        const low = Math.min(...candles.map(c => c.low));
+
+        aggregated.push({
+            time: periodStart,
+            open,
+            high,
+            low,
+            close
+        });
+    }
+
+    // Sort by time
+    aggregated.sort((a, b) => a.time - b.time);
 
     return aggregated;
 }
@@ -273,6 +295,13 @@ function init() {
         chart.subscribeCrosshairMove((param) => {
             if (param.time) {
                 const timeStr = formatTime(param.time);
+                const data = param.seriesData.get(candleSeries);
+                
+                let ohlcText = timeStr;
+                if (data) {
+                    ohlcText = `${timeStr}\nO: ${data.open.toFixed(2)} H: ${data.high.toFixed(2)} L: ${data.low.toFixed(2)} C: ${data.close.toFixed(2)}`;
+                }
+                
                 chart.applyOptions({
                     watermark: {
                         visible: true,
@@ -280,7 +309,7 @@ function init() {
                         horzAlign: 'left',
                         vertAlign: 'top',
                         color: 'rgba(255, 255, 255, 0.5)',
-                        text: timeStr,
+                        text: ohlcText,
                     },
                 });
             }

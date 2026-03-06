@@ -40,6 +40,9 @@ public interface ExFutureClient {
     default String getDepth(TreeMap<String, Object> sortedParams) {
         throw new RuntimeException("Exchange not supported");
     }
+    default String getKline(TreeMap<String, Object> sortedParams) {
+        throw new RuntimeException("Exchange not supported");
+    }
     default void subscribeMarkPrice(String symbol, String interval, Consumer<String> callback) {
         throw new RuntimeException("Exchange not supported");
     }

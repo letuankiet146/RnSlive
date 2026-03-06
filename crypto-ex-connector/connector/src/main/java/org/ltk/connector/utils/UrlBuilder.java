@@ -22,6 +22,7 @@ public class UrlBuilder {
             while(true) {
                 while(var3.hasNext()) {
                     Map.Entry<String, Object> mapElement = (Map.Entry)var3.next();
+                    if (mapElement.getValue() == null) continue;
                     if (mapElement.getValue() instanceof Double) {
                         parameters.replace(mapElement.getKey(), getFormatter().format(mapElement.getValue()));
                     } else if (mapElement.getValue() instanceof ArrayList) {

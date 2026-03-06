@@ -1,6 +1,7 @@
 package org.ltk.connector.service.impl;
 
 import org.ltk.connector.client.ExchangeName;
+import org.ltk.connector.component.Kline;
 import org.ltk.connector.service.ExchangeService;
 import org.ltk.connector.service.impl.exchange.BinanceService;
 import org.ltk.connector.service.impl.exchange.BingXService;
@@ -216,6 +217,22 @@ public class ExchangeServiceImpl implements ExchangeService {
                 return binanceService.getDepth(symbol, limit);
             case OKX:
                 return okxService.getDepth(symbol, limit);
+            case BYBIT:
+                throw new RuntimeException("Not implemented");
+            default:
+                throw new RuntimeException("Exchange not supported: " + exchangeName);
+        }
+    }
+
+    @Override
+    public List<Kline> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit) {
+        switch (exchangeName) {
+            case BINGX:
+                throw new RuntimeException("Not implemented");
+            case BINANCE:
+                return binanceService.getKline(symbol, interval, startTime, endTime, limit);
+            case OKX:
+                throw new RuntimeException("Not implemented");
             case BYBIT:
                 throw new RuntimeException("Not implemented");
             default:

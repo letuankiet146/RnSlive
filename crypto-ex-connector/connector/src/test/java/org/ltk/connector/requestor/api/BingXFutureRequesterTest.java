@@ -3,6 +3,7 @@ package org.ltk.connector.requestor.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.ltk.connector.exception.ExchangeClientException;
@@ -20,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+@Disabled // Due to missing secret api key
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(classes=BingXFutureRequesterTest.class)
 @ComponentScan(basePackages = "org.ltk.connector")

@@ -28,6 +28,12 @@ public class BinanceExFutureClientImpl implements ExFutureClient {
     }
 
     @Override
+    public String getKline(TreeMap<String, Object> sortedParams) {
+        String path = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_KLINE_URL +"?", sortedParams);
+        return requester.sendRequest(HttpMethod.GET, path);
+    }
+
+    @Override
     public void subscribeTradeDetail(String symbol, String interval, Consumer<String> callback) {
         String path = String.format("%s@aggTrade", symbol.toLowerCase());
         futureWebSocket.subscribe(path, callback);

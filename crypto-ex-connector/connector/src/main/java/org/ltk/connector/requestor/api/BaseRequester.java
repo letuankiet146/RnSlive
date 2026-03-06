@@ -31,13 +31,6 @@ public abstract class BaseRequester {
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(5))
-                .onErrorResume(e -> {
-                    if (e instanceof TimeoutException) {
-                        String message = String.format("Timeout exception while sending request %s %s", method, path);
-                        throw new RuntimeException(message,e);
-                    }
-                    throw new RuntimeException(e);
-                })
                 .block();
     }
 

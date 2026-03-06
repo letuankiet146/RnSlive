@@ -40,9 +40,8 @@ public class BingXExFutureClientImpl implements ExFutureClient {
 
     @Override
     public String getPremiumIndex(TreeMap<String, Object> sortedParams) {
-        signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_PREMIUM_INDEX_URL), sortedParams);
-        return requester.sendRequest(HttpMethod.GET, path, accountKey.getApiKey());
+        return requester.sendRequest(HttpMethod.GET, path);
     }
 
     private void signedParams(TreeMap<String, Object> sortedParams) {
