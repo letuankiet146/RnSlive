@@ -79,6 +79,10 @@ public class BinanceService {
         exFutureClient.subscribeMarkPrice(symbol, interval, callback);
     }
 
+    public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
+        exFutureClient.subscribeDepth(symbol, interval, callback);
+    }
+
     public void subscribeForceOrder(String symbol, Consumer<String> callback) {
         exFutureClient.forceOrder(symbol, callback);
     }

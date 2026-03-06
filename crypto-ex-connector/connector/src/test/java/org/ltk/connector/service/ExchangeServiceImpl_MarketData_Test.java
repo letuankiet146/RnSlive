@@ -34,6 +34,12 @@ public class ExchangeServiceImpl_MarketData_Test {
     }
 
     @Test
+    public void testSubscribeDepth_BINANCE() throws InterruptedException {
+        exchangeServiceImpl.subscribeDepth(ExchangeName.BINANCE, "XRPUSDT", null, System.out::println);
+        TradeHelper.delay(2, TimeUnit.SECONDS);
+    }
+
+    @Test
     public void testSubscribeTradeDetail() throws InterruptedException {
         exchangeServiceImpl.subscribeTradeDetail(ExchangeName.BINGX, SYMBOL, "500ms", System.out::println);
         TradeHelper.delay(2, TimeUnit.SECONDS);

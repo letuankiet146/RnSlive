@@ -58,7 +58,7 @@ console.log('Script loaded!');
 // Load kLines data for specific interval
 async function loadKLines(interval) {
     try {
-        const response = await fetch(`http://localhost:8080/kLines?interval=${interval}`);
+        const response = await fetch(`http://localhost:8080/binance/kLines?interval=${interval}`);
         const kLines = await response.json();
         
         console.log('Loaded kLines:', kLines.length, 'for interval:', interval);
@@ -84,7 +84,7 @@ async function loadKLines(interval) {
 }
 
 function connectSSE() {
-    const eventSource = new EventSource('http://localhost:8080/prices');
+    const eventSource = new EventSource('http://localhost:8080/okx/stream/prices');
 
     eventSource.onmessage = (event) => {
         try {

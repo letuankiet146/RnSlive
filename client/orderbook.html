@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance OrderBook - Real-time</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0b0e11;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #f0b90b;
+        }
+        .info {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #848e9c;
+        }
+        .orderbook {
+            display: flex;
+            gap: 20px;
+        }
+        .side {
+            flex: 1;
+            background: #1e2329;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .side h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .asks h2 {
+            color: #f6465d;
+        }
+        .bids h2 {
+            color: #0ecb81;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            font-weight: bold;
+            border-bottom: 1px solid #2b3139;
+            margin-bottom: 10px;
+            color: #848e9c;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 8px;
+            font-size: 14px;
+        }
+        .asks .row {
+            color: #f6465d;
+        }
+        .bids .row {
+            color: #0ecb81;
+        }
+        .price {
+            flex: 1;
+        }
+        .quantity {
+            flex: 1;
+            text-align: right;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .connected {
+            background: #0ecb81;
+            color: #0b0e11;
+        }
+        .disconnected {
+            background: #f6465d;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Binance OrderBook - BTCUSDT</h1>
+        <div id="status" class="status disconnected">Connecting...</div>
+        <div class="info">
+            <div>Last Update ID: <span id="lastUpdateId">-</span></div>
+            <div>Timestamp: <span id="timestamp">-</span></div>
+        </div>
+        <div class="orderbook">
+            <div class="side asks">
+                <h2>ASKS (Sell Orders)</h2>
+                <div class="header">
+                    <div class="price">Price (USDT)</div>
+                    <div class="quantity">Quantity (BTC)</div>
+                </div>
+                <div id="asks-list"></div>
+            </div>
+            <div class="side bids">
+                <h2>BIDS (Buy Orders)</h2>
+                <div class="header">
+                    <div class="price">Price (USDT)</div>
+                    <div class="quantity">Quantity (BTC)</div>
+                </div>
+                <div id="bids-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const eventSource = new EventSource('http://localhost:8080/binance/stream/orderbook');
+        const statusEl = document.getElementById('status');
+        const lastUpdateIdEl = document.getElementById('lastUpdateId');
+        const timestampEl = document.getElementById('timestamp');
+        const asksListEl = document.getElementById('asks-list');
+        const bidsListEl = document.getElementById('bids-list');
+
+        eventSource.onopen = () => {
+            statusEl.textContent = 'Connected';
+            statusEl.className = 'status connected';
+        };
+
+        eventSource.onerror = () => {
+            statusEl.textContent = 'Disconnected';
+            statusEl.className = 'status disconnected';
+        };
+
+        eventSource.onmessage = (event) => {
+            try {
+                const orderBook = JSON.parse(event.data);
+                
+                // Update info
+                lastUpdateIdEl.textContent = orderBook.lastUpdateId;
+                const date = new Date(orderBook.timestamp);
+                timestampEl.textContent = date.toLocaleTimeString();
+
+                // Update asks (show top 20)
+                const asks = Object.entries(orderBook.asks)
+                    .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                    .slice(0, 20)
+                    .reverse();
+                
+                asksListEl.innerHTML = asks.map(([price, qty]) => `
+                    <div class="row">
+                        <div class="price">${parseFloat(price).toFixed(2)}</div>
+                        <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
+                    </div>
+                `).join('');
+
+                // Update bids (show top 20)
+                const bids = Object.entries(orderBook.bids)
+                    .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
+                    .slice(0, 20);
+                
+                bidsListEl.innerHTML = bids.map(([price, qty]) => `
+                    <div class="row">
+                        <div class="price">${parseFloat(price).toFixed(2)}</div>
+                        <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error parsing orderbook data:', error);
+            }
+        };
+    </script>
+</body>
+</html>

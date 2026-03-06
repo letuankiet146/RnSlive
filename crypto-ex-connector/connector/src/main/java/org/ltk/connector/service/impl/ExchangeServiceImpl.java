@@ -265,7 +265,8 @@ public class ExchangeServiceImpl implements ExchangeService {
                 bingXService.subscribeDepth(symbol, interval, callback);
                 break;
             case BINANCE:
-                throw new RuntimeException("Not implemented");
+                binanceService.subscribeDepth(symbol, interval, callback);
+                break;
             case BYBIT:
                 bybitService.subscribeDepth(symbol, interval, callback);
                 break;

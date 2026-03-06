@@ -1,6 +1,8 @@
 package org.tk.rnslive.controller;
 
 import org.ltk.connector.component.Kline;
+import org.ltk.model.exchange.depth.BinanceDepth;
+import org.ltk.model.exchange.depth.Depth;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,15 +22,28 @@ public class PriceController {
         this.priceService = priceService;
     }
 
-    @GetMapping(value = "/prices", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/okx/stream/prices", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<PriceDto> streamPrices() {
         return priceService.getPriceStream();
     }
 
-    @GetMapping(value = "/kLines", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/binance/kLines", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<List<Kline>> getKline(
             @RequestParam(defaultValue = "1m") String interval
     ) {
         return priceService.getKline(interval);
     }
+
+    @GetMapping(value = "/binance/stream/depth", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<Depth> streamDepth() {
+        return priceService.getDepthStream();
+    }
+
+//    @GetMapping(value = "/binance/depth", produces = MediaType.APPLICATION_JSON_VALUE)
+//    public Mono<Depth> getKline(
+//            @RequestParam(defaultValue = "BTCUSDT") String symbol,
+//            @RequestParam(defaultValue = "1000") int limit
+//    ) {
+//        return priceService.getDepth(symbol, limit);
+//    }
 }

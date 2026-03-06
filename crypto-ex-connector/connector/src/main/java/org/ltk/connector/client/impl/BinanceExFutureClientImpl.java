@@ -47,6 +47,17 @@ public class BinanceExFutureClientImpl implements ExFutureClient {
     }
 
     @Override
+    public void subscribeDepth(String symbol, String level, Consumer<String> callback) {
+        String path;
+        if (level == null) {
+            path = String.format("%s@depth", symbol.toLowerCase());
+        } else {
+            path = String.format("%s@depth@%s", symbol.toLowerCase(), level);
+        }
+        futureWebSocket.subscribe(path, callback);
+    }
+
+    @Override
     public void forceOrder(String symbol, Consumer<String> callback) {
         String path = String.format("%s@forceOrder", symbol.toLowerCase());
         futureWebSocket.subscribe(path, callback);
