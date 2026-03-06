@@ -8,6 +8,7 @@ import org.ltk.connector.utils.UrlBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -31,7 +32,7 @@ public class OKXExFutureClientImpl implements ExFutureClient {
     private OKXFutureWebSocket webSocket;
 
     @Override
-    public String getDepth(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getDepth(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(RESTApiUrl.OKX_GET_DEPTH_FULL_URL +"?", sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);
     }

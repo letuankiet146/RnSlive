@@ -27,7 +27,7 @@ public class BinaneFutureRequesterTest {
         params.put("symbol", "BTCUSDT");
         params.put("limit", 500);
         String url = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_DEPTH_URL +"?", params);
-        String response = requester.sendRequest(HttpMethod.GET, url);
+        String response = requester.sendRequest(HttpMethod.GET, url).block();
         System.out.println(response);
         Assertions.assertNotNull(response);
     }
@@ -39,7 +39,7 @@ public class BinaneFutureRequesterTest {
             params.put("symbol", "abc");
             params.put("limit", 500);
             String url = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_DEPTH_URL +"?", params);
-            String response = requester.sendRequest(HttpMethod.GET, url);
+            String response = requester.sendRequest(HttpMethod.GET, url).block();
         });
     }
 }

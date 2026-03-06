@@ -1,4 +1,5 @@
 package org.ltk.connector.service.impl.exchange;
+import reactor.core.publisher.Mono;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,7 +44,7 @@ public class BingXService {
         sortedParams.put("price", BigDecimal.valueOf(price));
         String positionSide = sortedParams.get("side").toString().equals("BUY") ? "LONG" : "SHORT";
         sortedParams.put("positionSide", positionSide);
-        var response =  exFutureClient.placeOrder(sortedParams);
+        var response =  exFutureClient.placeOrder(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("order").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -59,7 +60,7 @@ public class BingXService {
         sortedParams.put("type", OrderType.MARKET.name());
         String positionSide = sortedParams.get("side").toString().equals("BUY") ? "LONG" : "SHORT";
         sortedParams.put("positionSide", positionSide);
-        var response =  exFutureClient.placeOrder(sortedParams);
+        var response =  exFutureClient.placeOrder(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("order").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -89,7 +90,7 @@ public class BingXService {
         TreeMap<String, Object> sortedParams = buildMarkerStopParams(symbol, side, price, price, quantity);
         sortedParams.put("type", OrderType.TAKE_PROFIT.name());
         sortedParams.put("positionSide", positionSide);
-        var response =  exFutureClient.placeOrder(sortedParams);
+        var response =  exFutureClient.placeOrder(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("order").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -106,7 +107,7 @@ public class BingXService {
         TreeMap<String, Object> sortedParams = buildMarkerStopParams(symbol, side, price, price, quantity);
         sortedParams.put("type", OrderType.STOP.name());
         sortedParams.put("positionSide", positionSide);
-        var response =  exFutureClient.placeOrder(sortedParams);
+        var response =  exFutureClient.placeOrder(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("order").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -122,7 +123,7 @@ public class BingXService {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
         sortedParams.put("orderId", orderId);
-        var response = exFutureClient.deleteOrder(sortedParams);
+        var response = exFutureClient.deleteOrder(sortedParams).block();
         try {
             String code = mapper.readTree(response).path("code").asText();
             if (!StringUtils.hasText(code) || Integer.parseInt(code) != 0) {
@@ -142,7 +143,7 @@ public class BingXService {
             throw new RuntimeException(e);
         }
 
-        var response = exFutureClient.placeMultiOrder(sortedParams);
+        var response = exFutureClient.placeMultiOrder(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("orders").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -158,7 +159,7 @@ public class BingXService {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
         sortedParams.put("orderIdList", orderIds.toString());
-        var response = exFutureClient.deleteMultiOrder(sortedParams);
+        var response = exFutureClient.deleteMultiOrder(sortedParams).block();
         try {
             String code = mapper.readTree(response).path("code").asText();
             if (!StringUtils.hasText(code) || Integer.parseInt(code) != 0) {
@@ -172,7 +173,7 @@ public class BingXService {
     public void cancelAllOpenOrders(String symbol) {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
-        var response = exFutureClient.cancelAllOpenOrders(sortedParams);
+        var response = exFutureClient.cancelAllOpenOrders(sortedParams).block();
         try {
             String code = mapper.readTree(response).path("code").asText();
             if (!StringUtils.hasText(code) || Integer.parseInt(code) != 0) {
@@ -186,7 +187,7 @@ public class BingXService {
     public void closeAllPosition(String symbol) {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
-        var response = exFutureClient.closeAllPosition(sortedParams);
+        var response = exFutureClient.closeAllPosition(sortedParams).block();
         try {
             String code = mapper.readTree(response).path("code").asText();
             if (!StringUtils.hasText(code) || Integer.parseInt(code) != 0) {
@@ -200,7 +201,7 @@ public class BingXService {
     public List<Order> getOpenOrders(String symbol) {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
-        var response =  exFutureClient.getOpenOrders(sortedParams);
+        var response =  exFutureClient.getOpenOrders(sortedParams).block();
         try {
             String orderJson = mapper.readTree(response).path("data").path("orders").toString();
             if (StringUtils.hasText(orderJson)) {
@@ -219,7 +220,7 @@ public class BingXService {
     }
 
     private  List<Position> getPositionList(TreeMap<String, Object> sortedParams) {
-        var response =  exFutureClient.getPosition(sortedParams);
+        var response =  exFutureClient.getPosition(sortedParams).block();
         try {
             String positionJson = mapper.readTree(response).path("data").toString();
             if (StringUtils.hasText(positionJson)) {
@@ -235,7 +236,7 @@ public class BingXService {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
         sortedParams.put("positionId", positionId);
-        var response =  exFutureClient.getPositionHistory(sortedParams);
+        var response =  exFutureClient.getPositionHistory(sortedParams).block();
         try {
             String positionJson = mapper.readTree(response).path("data").path("positionHistory").toString();
             if (StringUtils.hasText(positionJson)) {
@@ -250,7 +251,7 @@ public class BingXService {
     public double getMarkPrice(String symbol) {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("symbol", symbol);
-        var response =  exFutureClient.getPremiumIndex(sortedParams);
+        var response =  exFutureClient.getPremiumIndex(sortedParams).block();
         try {
             String markPrice = mapper.readValue(mapper.readTree(response).path("data").path("markPrice").toString(), String.class);
             return Double.parseDouble(markPrice);

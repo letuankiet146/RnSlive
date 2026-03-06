@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
@@ -26,34 +27,25 @@ public class BingXFutureRequester extends BaseRequester{
 
     /**
      * @deprecated Use {@link BaseRequester#sendRequest(HttpMethod, String, Map, String)} instead
-     * @param method
-     * @param path
-     * @param apiKey
-     * @param body
-     * @return
      */
     @Deprecated
-    public String sendRequest(HttpMethod method, String path, String apiKey, String body) {
+    public Mono<String> sendRequest(HttpMethod method, String path, String apiKey, String body) {
         Map<String, String> headers = Map.of("X-BX-APIKEY", apiKey);
         return sendRequest(method, path, headers, body);
     }
 
     /**
      * @deprecated Use {@link BaseRequester#sendRequest(HttpMethod, String, Map)} instead
-     * @param method
-     * @param path
-     * @param apiKey
-     * @return
      */
     @Deprecated
-    public String sendRequest(HttpMethod method, String path, String apiKey) {
+    public Mono<String> sendRequest(HttpMethod method, String path, String apiKey) {
         return sendRequest(method, path, apiKey, null);
     }
 
     @Override
     protected void validateParams(String path, String body) {
         // Validate the path pattern
-        String pathPattern = "^/openApi/.*$"; // Example pattern
+        String pathPattern = "^/openApi/.*$";
         if (!path.matches(pathPattern)) {
             throw new IllegalArgumentException("Invalid path pattern");
         }

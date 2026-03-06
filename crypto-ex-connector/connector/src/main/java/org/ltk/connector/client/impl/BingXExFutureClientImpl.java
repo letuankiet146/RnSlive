@@ -14,6 +14,7 @@ import org.ltk.model.AccountKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -32,14 +33,14 @@ public class BingXExFutureClientImpl implements ExFutureClient {
     private AccountKey accountKey;
 
     @Override
-    public void setLeverage(TreeMap<String, Object> sortedParams) {
+    public Mono<Void> setLeverage(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_SET_LEVERAGE_URL), sortedParams);
-        requester.sendRequest(HttpMethod.POST, path, accountKey.getApiKey());
+        return requester.sendRequest(HttpMethod.POST, path, accountKey.getApiKey()).then();
     }
 
     @Override
-    public String getPremiumIndex(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getPremiumIndex(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_PREMIUM_INDEX_URL), sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);
     }
@@ -53,72 +54,72 @@ public class BingXExFutureClientImpl implements ExFutureClient {
     }
 
     @Override
-    public String placeOrder(TreeMap<String, Object> sortedParams) {
+    public Mono<String> placeOrder(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String body;
         try {
             body = mapper.writeValueAsString(sortedParams);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return Mono.error(new RuntimeException(e));
         }
         return requester.sendRequest(HttpMethod.POST, RESTApiUrl.BINGX_PLACE_ORDER_URL, accountKey.getApiKey(), body);
     }
 
     @Override
-    public String placeMultiOrder(TreeMap<String, Object> sortedParams) {
+    public Mono<String> placeMultiOrder(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String body;
         try {
             body = mapper.writeValueAsString(sortedParams);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return Mono.error(new RuntimeException(e));
         }
         return requester.sendRequest(HttpMethod.POST, RESTApiUrl.BINGX_PLACE_MULTI_ORDER_URL, accountKey.getApiKey(), body);
     }
 
     @Override
-    public String deleteOrder(TreeMap<String, Object> sortedParams) {
+    public Mono<String> deleteOrder(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_PLACE_ORDER_URL), sortedParams);
         return requester.sendRequest(HttpMethod.DELETE, path, accountKey.getApiKey());
     }
 
     @Override
-    public String deleteMultiOrder(TreeMap<String, Object> sortedParams) {
+    public Mono<String> deleteMultiOrder(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_PLACE_MULTI_ORDER_URL), sortedParams);
         return requester.sendRequest(HttpMethod.DELETE, path, accountKey.getApiKey());
     }
 
     @Override
-    public String getOpenOrders(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getOpenOrders(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_QUERY_ALL_OPEN_ORDERS_URL), sortedParams);
         return requester.sendRequest(HttpMethod.GET, path, accountKey.getApiKey());
     }
 
     @Override
-    public String cancelAllOpenOrders(TreeMap<String, Object> sortedParams) {
+    public Mono<String> cancelAllOpenOrders(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_CANCEL_ALL_OPEN_ORDERS_URL), sortedParams);
         return requester.sendRequest(HttpMethod.DELETE, path, accountKey.getApiKey());
     }
 
     @Override
-    public String getPosition(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getPosition(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_POSITION_URL), sortedParams);
         return requester.sendRequest(HttpMethod.GET, path, accountKey.getApiKey());
     }
     @Override
-    public String getPositionHistory(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getPositionHistory(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_POSITION_HISTORY_URL), sortedParams);
         return requester.sendRequest(HttpMethod.GET, path, accountKey.getApiKey());
     }
 
     @Override
-    public String closeAllPosition(TreeMap<String, Object> sortedParams) {
+    public Mono<String> closeAllPosition(TreeMap<String, Object> sortedParams) {
         signedParams(sortedParams);
         String path = UrlBuilder.joinQueryParameters(String.format("%s?", RESTApiUrl.BINGX_CLOSE_ALL_POSITION_URL), sortedParams);
         return requester.sendRequest(HttpMethod.POST, path, accountKey.getApiKey());
@@ -133,7 +134,6 @@ public class BingXExFutureClientImpl implements ExFutureClient {
 
     @Override
     public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
-        //BTC-USDT@depth100@500ms.
         String dataType = String.format("%s@depth100@%s", symbol, interval);
         String subscribeMessage = String.format("{\"id\": \"id1\", \"reqType\": \"sub\", \"dataType\": \"%s\"}", dataType);
         webSocket.subscribe(subscribeMessage, callback);

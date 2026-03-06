@@ -14,6 +14,7 @@ import org.ltk.model.exchange.order.bingx.BingXOrder;
 import org.ltk.model.exchange.position.Position;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Set;
@@ -209,7 +210,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
-    public Depth getDepth(ExchangeName exchangeName, String symbol, int limit) {
+    public Mono<Depth> getDepth(ExchangeName exchangeName, String symbol, int limit) {
         switch (exchangeName) {
             case BINGX:
                 throw new RuntimeException("Not implemented");
@@ -225,7 +226,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
-    public List<Kline> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit) {
+    public Mono<List<Kline>> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit) {
         switch (exchangeName) {
             case BINGX:
                 throw new RuntimeException("Not implemented");

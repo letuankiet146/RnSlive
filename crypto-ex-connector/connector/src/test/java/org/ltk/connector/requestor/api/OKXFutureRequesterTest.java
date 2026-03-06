@@ -27,7 +27,7 @@ public class OKXFutureRequesterTest {
         params.put("instId", "BTC-USDT-SWAP");
         params.put("sz", 400);
         String url = UrlBuilder.joinQueryParameters(RESTApiUrl.OKX_GET_DEPTH_FULL_URL +"?", params);
-        String response = requester.sendRequest(HttpMethod.GET, url);
+        String response = requester.sendRequest(HttpMethod.GET, url).block();
         System.out.println(response);
         Assertions.assertNotNull(response);
     }
@@ -39,7 +39,7 @@ public class OKXFutureRequesterTest {
             params.put("instId", "abc");
             params.put("sz", 400);
             String url = UrlBuilder.joinQueryParameters(RESTApiUrl.OKX_GET_DEPTH_FULL_URL +"?", params);
-            String response = requester.sendRequest(HttpMethod.GET, url);
+            String response = requester.sendRequest(HttpMethod.GET, url).block();
             System.out.println(response);
         });
     }

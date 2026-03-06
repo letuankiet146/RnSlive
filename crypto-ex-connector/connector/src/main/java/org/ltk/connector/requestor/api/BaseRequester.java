@@ -4,6 +4,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Map;
@@ -15,7 +16,7 @@ public abstract class BaseRequester {
     protected abstract void init();
     protected abstract void validateParams(String path, String body);
 
-    private String baseSendRequest(HttpMethod method, String path, Consumer<HttpHeaders> headersConsumer, String body) {
+    private Mono<String> baseSendRequest(HttpMethod method, String path, Consumer<HttpHeaders> headersConsumer, String body) {
         validateParams(path, body);
         var spec = webClient
                 .method(method)
@@ -30,20 +31,19 @@ public abstract class BaseRequester {
         return spec
                 .retrieve()
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(5))
-                .block();
+                .timeout(Duration.ofSeconds(5));
     }
 
-    public String sendRequest(HttpMethod method, String path, Map<String, String> headers, String body) {
+    public Mono<String> sendRequest(HttpMethod method, String path, Map<String, String> headers, String body) {
         Consumer<HttpHeaders> headersConsumer = headers == null ? null : httpHeaders -> headers.forEach(httpHeaders::add);
         return baseSendRequest(method, path, headersConsumer, body);
     }
 
-    public String sendRequest(HttpMethod method, String path, Map<String, String> headers) {
+    public Mono<String> sendRequest(HttpMethod method, String path, Map<String, String> headers) {
         Consumer<HttpHeaders> headersConsumer = headers == null ? null : httpHeaders -> headers.forEach(httpHeaders::add);
         return baseSendRequest(method, path, headersConsumer, null);
     }
-    public String sendRequest(HttpMethod method, String path) {
+    public Mono<String> sendRequest(HttpMethod method, String path) {
         return baseSendRequest(method, path, null, null);
     }
 }

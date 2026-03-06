@@ -30,7 +30,7 @@ public abstract class AbstractExchangeWebClientConfig {
                         }
                         throwExchangeClientExceptionIfAny(body);
                         return Mono.just(ClientResponse.create(clientResponse.statusCode())
-                                .headers(headers -> headers.addAll(clientResponse.headers().asHttpHeaders()))
+                                .headers(headers -> clientResponse.headers().asHttpHeaders().forEach(headers::addAll))
                                 .body(body)
                                 .build());
                     });

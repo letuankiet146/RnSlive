@@ -8,6 +8,7 @@ import org.ltk.connector.utils.UrlBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -22,13 +23,13 @@ public class BinanceExFutureClientImpl implements ExFutureClient {
     private BinanceFutureRequester requester;
 
     @Override
-    public String getDepth(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getDepth(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_DEPTH_URL +"?", sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);
     }
 
     @Override
-    public String getKline(TreeMap<String, Object> sortedParams) {
+    public Mono<String> getKline(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_KLINE_URL +"?", sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);
     }

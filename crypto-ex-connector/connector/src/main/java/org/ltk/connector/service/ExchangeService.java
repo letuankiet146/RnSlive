@@ -6,6 +6,7 @@ import org.ltk.model.exchange.depth.Depth;
 import org.ltk.model.exchange.order.Order;
 import org.ltk.model.exchange.order.SideOrder;
 import org.ltk.model.exchange.position.Position;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Set;
@@ -26,8 +27,8 @@ public interface ExchangeService {
     void closeAllPosition(ExchangeName exchangeName, String symbol);
     double getMarkPrice(ExchangeName exchangeName, String symbol);
     void setLeverage(ExchangeName exchangeName, String symbol, int leverage, String positionSide);
-    Depth getDepth(ExchangeName exchangeName, String symbol, int limit);
-    List<Kline> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit);
+    Mono<Depth> getDepth(ExchangeName exchangeName, String symbol, int limit);
+    Mono<List<Kline>> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit);
     void subscribeMarkPrice(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeDepth(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeTradeDetail(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);

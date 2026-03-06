@@ -41,19 +41,19 @@ public class ExchangeServiceImpl_MarketData_Test {
 
     @Test
     public void testGetDepth() {
-        var depth = exchangeServiceImpl.getDepth(ExchangeName.BINANCE, "BTCUSDT", 10);
+        var depth = exchangeServiceImpl.getDepth(ExchangeName.BINANCE, "BTCUSDT", 10).block();
         Assertions.assertNotNull(depth);
         Assertions.assertEquals(depth.getAsks().size(), 10);
 
         depth = null;
-        depth = exchangeServiceImpl.getDepth(ExchangeName.OKX, "BTC-USDT-SWAP", 50);
+        depth = exchangeServiceImpl.getDepth(ExchangeName.OKX, "BTC-USDT-SWAP", 50).block();
         Assertions.assertNotNull(depth);
         Assertions.assertEquals(depth.getAsks().size(), 50);
     }
 
     @Test
     public void testGetKline() {
-        var klineList = exchangeServiceImpl.getKline(ExchangeName.BINANCE,"BTCUSDT", "1m",null, null, null);
+        var klineList = exchangeServiceImpl.getKline(ExchangeName.BINANCE,"BTCUSDT", "1m",null, null, null).block();
         Assertions.assertNotNull(klineList);
         Assertions.assertFalse(klineList.isEmpty());
     }

@@ -1,6 +1,8 @@
 package org.tk.rnslive.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.ltk.connector.component.Kline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tk.rnslive.dto.PriceDto;
@@ -10,9 +12,12 @@ import org.ltk.connector.service.ExchangeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Random;
 
 @Service
@@ -23,34 +28,58 @@ public class PriceService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PriceService.class);
 
-//    private final Sinks.Many<PriceDto> sink = Sinks.many().multicast().onBackpressureBuffer();
     private final Sinks.Many<PriceDto> sink = Sinks.many().replay().latest();
 
     public Flux<PriceDto> getPriceStream() {
         return sink.asFlux();
     }
 
+    public Mono<List<Kline>> getKline(String interval) {
+        return exchangeService.getKline(ExchangeName.BINANCE,"BTCUSDT", interval, null, null, null);
+    }
+
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private PriceDto getPrice(ExchangeName exchangeName, String jsonResult) throws JsonProcessingException {
+        PriceDto dto;
+        JsonNode rootNode = mapper.readTree(jsonResult);
+        double currentPrice = -1;
+        long timestamp = -1;
+        switch (exchangeName) {
+            case BINANCE -> {
+                timestamp = Long.parseLong(rootNode.get("E").asText());
+                currentPrice = Double.parseDouble(rootNode.get("p").asText());
+
+            }
+            case OKX -> {
+                JsonNode dataNode = rootNode.get("data");
+                if (dataNode != null && dataNode.isArray() && !dataNode.isEmpty()) {
+                    timestamp = dataNode.get(0).get("ts").asLong();
+                    currentPrice = dataNode.get(0).get("markPx").asDouble();
+                }
+            }
+        }
+        if (currentPrice < 0) {
+            return null;
+        }
+        double resistance = currentPrice * 1.2;
+        double support = currentPrice * 0.8;
+        dto = new PriceDto(resistance, round(currentPrice), round(support), timestamp);
+        return dto;
+    }
 
     @PostConstruct
     public void startPriceGenerator() {
-        exchangeService.subscribeMarkPrice(ExchangeName.BINANCE, "BTCUSDT", "1s", result -> {
+        final ExchangeName exchangeName = ExchangeName.OKX;
+        final String code = "BTC-USDT-SWAP";
+        exchangeService.subscribeMarkPrice(exchangeName, code, null, result -> {
             try {
-                //{"arg":{"channel":"mark-price","instId":"BTC-USDT-SWAP"},"data":[{"instId":"BTC-USDT-SWAP","instType":"SWAP","markPx":"68456.2","ts":"1772589355466"}]}
-//              //  {"e":"markPriceUpdate","E":1772614762000,"s":"BTCUSDT","p":"70978.80000000","P":"70070.21013587","i":"71001.88369565","r":"0.00004353","T":1772640000000}
-                // parse JSON string
-                JsonNode rootNode = mapper.readTree(result);
-                long timestamp = Long.parseLong(rootNode.get("E").asText());
-                double currentPrice = Double.parseDouble(rootNode.get("p").asText());
-
-                double resistance = currentPrice * 1.2;
-                double support = currentPrice * 0.8;
-
-                PriceDto dto = new PriceDto(resistance, round(currentPrice), round(support), timestamp);
-                Sinks.EmitResult emitResult = sink.tryEmitNext(dto);
-                if (emitResult.isFailure()) {
-                    LOGGER.info("Could not emit data. Due to " + emitResult);
+                PriceDto dto = getPrice(exchangeName, result);
+                if (dto != null) {
+                    Sinks.EmitResult emitResult = sink.tryEmitNext(dto);
+                    if (emitResult.isFailure()) {
+                        LOGGER.info("Could not emit data. Due to " + emitResult);
+                    }
                 }
             } catch (Exception e) {
                 LOGGER.error("Error occurs while streaming price.",e.getCause());

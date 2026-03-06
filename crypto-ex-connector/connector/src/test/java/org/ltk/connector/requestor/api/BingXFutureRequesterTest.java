@@ -39,7 +39,7 @@ public class BingXFutureRequesterTest {
         params.put("timestamp", System.currentTimeMillis());
         String url = UrlBuilder.joinQueryParameters("/openApi/swap/v2/quote/contracts?", params);
         System.out.println(url);
-        String response = requester.sendRequest(HttpMethod.GET, url);
+        String response = requester.sendRequest(HttpMethod.GET, url).block();
         System.out.println(response);
         Assertions.assertNotNull(response);
     }
@@ -57,7 +57,7 @@ public class BingXFutureRequesterTest {
         params.put("signature", signed);
         String url = UrlBuilder.joinQueryParameters("/openApi/swap/v3/user/balance?", params);
         System.out.println(url);
-        String response = requester.sendRequest(HttpMethod.GET, url, API_KEY);
+        String response = requester.sendRequest(HttpMethod.GET, url, API_KEY).block();
         System.out.println(response);
         Assertions.assertNotNull(response);
     }
@@ -80,7 +80,7 @@ public class BingXFutureRequesterTest {
         String body = mapper.writeValueAsString(params);
         System.out.println(body);
 
-        String response = requester.sendRequest(HttpMethod.POST, "/openApi/swap/v2/trade/order/test", API_KEY, body);
+        String response = requester.sendRequest(HttpMethod.POST, "/openApi/swap/v2/trade/order/test", API_KEY, body).block();
         System.out.println(response);
         Assertions.assertNotNull(response);
     }
@@ -94,7 +94,7 @@ public class BingXFutureRequesterTest {
             params.put("timestamp", System.currentTimeMillis());
             String url = UrlBuilder.joinQueryParameters("/openApi/swap/v2/quote/contracts?", params);
             System.out.println(url);
-            String response = requester.sendRequest(HttpMethod.GET, url + "invalid");
+            String response = requester.sendRequest(HttpMethod.GET, url + "invalid").block();
             System.out.println(response);
         });
     }

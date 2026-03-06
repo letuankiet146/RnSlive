@@ -48,12 +48,14 @@ public class BingXFutureWebSocket extends BaseFutureWebsocket {
     private final ReactorNettyWebSocketClient webSocketClient = new ReactorNettyWebSocketClient();
 
     private void refreshListenKey(String apiKey) {
-        String getListenKeyResponse = requester.sendRequest(HttpMethod.POST, BINGX_GET_LISTEN_KEY_URL, apiKey);
+        requester.sendRequest(HttpMethod.POST, BINGX_GET_LISTEN_KEY_URL, apiKey)
+            .subscribe(getListenKeyResponse -> {
         try {
-            LISTEN_KEY = mapper.readValue(mapper.readTree(getListenKeyResponse).path("listenKey").toString(), String.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+                    LISTEN_KEY = mapper.readValue(mapper.readTree(getListenKeyResponse).path("listenKey").toString(), String.class);
+                } catch (JsonProcessingException e) {
+                    LOGGER.error("Error parsing listen key", e);
+                }
+            });
     }
 
     public void subscribeAccountData(String apiKey, String subscribeMessage, Consumer<String> callback) {
