@@ -11,9 +11,13 @@
         .depth-bar {
             position: absolute;
             height: 1px;
-            pointer-events: none;
+            pointer-events: auto;
             opacity: 0.6;
             transition: opacity 0.2s;
+            cursor: pointer;
+        }
+        .depth-bar:hover {
+            opacity: 0.9;
         }
         .depth-bar.bid {
             background: rgba(81, 207, 102, 0.3);
@@ -34,6 +38,44 @@
             bottom: 0;
             pointer-events: none;
             z-index: 10;
+        }
+        #depth-overlay.front {
+            z-index: 100;
+        }
+        #depth-overlay.back {
+            z-index: 1;
+        }
+        .depth-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .toggle-depth-btn {
+            background: #2a2a3e;
+            color: #e0e0e0;
+            border: 1px solid #3a3a4e;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        .toggle-depth-btn:hover {
+            background: #3a3a4e;
+        }
+        .toggle-depth-btn.front {
+            background: #26a69a;
+            border-color: #26a69a;
         }
     </style>
 </head>
@@ -91,6 +133,7 @@
                 <label>Orderbook Status</label>
                 <span id="orderbook-status">Disconnected</span>
             </div>
+            <button class="toggle-depth-btn" onclick="toggleDepthLayer()">Depth: Back</button>
         </aside>
 
         <main class="chart-area">
@@ -102,6 +145,8 @@
             </div>
         </main>
     </div>
+
+    <div class="depth-tooltip" id="depth-tooltip"></div>
 
     <script>
 
@@ -176,6 +221,46 @@
                 return `${remaining.hours.toString().padStart(2, '0')}:${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
             } else {
                 return `${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Tooltip functions
+        function showTooltip(event, price, quantity, type) {
+            const tooltip = document.getElementById('depth-tooltip');
+            tooltip.innerHTML = `
+                <div><strong>${type === 'bid' ? 'Bid' : 'Ask'}</strong></div>
+                <div>Price: $${price.toFixed(2)}</div>
+                <div>Cumulative: ${quantity.toFixed(4)}</div>
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${event.pageX - 160}px`;
+            tooltip.style.top = `${event.pageY + 10}px`;
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('depth-tooltip');
+            tooltip.style.display = 'none';
+        }
+
+        // Toggle depth layer
+        let depthInFront = false;
+
+        function toggleDepthLayer() {
+            const depthOverlay = document.getElementById('depth-overlay');
+            const toggleBtn = document.querySelector('.toggle-depth-btn');
+            
+            depthInFront = !depthInFront;
+            
+            if (depthInFront) {
+                depthOverlay.classList.remove('back');
+                depthOverlay.classList.add('front');
+                toggleBtn.classList.add('front');
+                toggleBtn.textContent = 'Depth: Front';
+            } else {
+                depthOverlay.classList.remove('front');
+                depthOverlay.classList.add('back');
+                toggleBtn.classList.remove('front');
+                toggleBtn.textContent = 'Depth: Back';
             }
         }
 
@@ -354,6 +439,12 @@
                 bar.style.top = `${yCoord}px`;
                 bar.style.right = '0px';
                 bar.style.width = `${barWidth}px`;
+                
+                // Add hover events
+                bar.addEventListener('mouseenter', (e) => showTooltip(e, bid.price, bid.cumQuantity, 'bid'));
+                bar.addEventListener('mouseleave', hideTooltip);
+                bar.addEventListener('mousemove', (e) => showTooltip(e, bid.price, bid.cumQuantity, 'bid'));
+                
                 depthOverlay.appendChild(bar);
             });
 
@@ -369,6 +460,12 @@
                 bar.style.top = `${yCoord}px`;
                 bar.style.right = '0px';
                 bar.style.width = `${barWidth}px`;
+                
+                // Add hover events
+                bar.addEventListener('mouseenter', (e) => showTooltip(e, ask.price, ask.cumQuantity, 'ask'));
+                bar.addEventListener('mouseleave', hideTooltip);
+                bar.addEventListener('mousemove', (e) => showTooltip(e, ask.price, ask.cumQuantity, 'ask'));
+                
                 depthOverlay.appendChild(bar);
             });
         }
