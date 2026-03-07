@@ -1,11 +1,13 @@
 package org.tk.rnslive.controller;
 
+import org.ltk.model.exchange.depth.Depth;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.tk.rnslive.model.OrderBook;
 import org.tk.rnslive.services.OrderBookService;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RestController
 public class OrderBookController {
@@ -18,5 +20,17 @@ public class OrderBookController {
     @GetMapping(value = "/binance/stream/orderbook", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<OrderBook> streamOrderBook() {
         return orderBookService.getOrderBookStream();
+    }
+
+    @GetMapping(value = "/binance/snapshot/depth", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<Depth> getSnapshotDepth() {
+        return orderBookService.getSnapshotDepth();
+    }
+
+    @GetMapping(value = "/binance/snapshot/orderbook", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<OrderBook> snapshotOrderBook() {
+        return orderBookService.snapshotOrderBook().map(orderBook -> {
+            return orderBook;
+        });
     }
 }

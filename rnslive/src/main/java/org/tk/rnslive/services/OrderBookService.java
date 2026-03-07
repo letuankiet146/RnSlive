@@ -13,12 +13,10 @@ import org.springframework.stereotype.Service;
 import org.tk.rnslive.model.DepthUpdate;
 import org.tk.rnslive.model.OrderBook;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
@@ -45,6 +43,14 @@ public class OrderBookService {
 
     public Flux<OrderBook> getOrderBookStream() {
         return orderBookSink.asFlux();
+    }
+
+    public Mono<OrderBook> snapshotOrderBook() {
+        return getOrderBookStream().next();
+    }
+
+    public Mono<Depth> getSnapshotDepth() {
+        return exchangeService.getDepth(ExchangeName.BINANCE, symbol, 1000);
     }
 
     @PostConstruct
@@ -218,11 +224,13 @@ public class OrderBookService {
     }
 
     private void emitOrderBook() {
-        Map<Double, Double> bidsCopy = new HashMap<>(bids);
-        Map<Double, Double> asksCopy = new HashMap<>(asks);
-        
+        Map<Double, Double> bidsCopy = new TreeMap<>((a, b) -> Double.compare(b, a));
+        bidsCopy.putAll(bids);
+
+        Map<Double, Double> asksCopy = new TreeMap<>(asks);
+
         OrderBook snapshot = new OrderBook(symbol, lastUpdateId, bidsCopy, asksCopy, timestamp);
-        
+
         Sinks.EmitResult result = orderBookSink.tryEmitNext(snapshot);
         if (result.isFailure()) {
             LOGGER.warn("Failed to emit orderbook: {}", result);

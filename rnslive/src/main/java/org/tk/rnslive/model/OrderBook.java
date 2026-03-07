@@ -1,12 +1,17 @@
 package org.tk.rnslive.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 import java.util.Map;
 
+@JsonPropertyOrder({ "timestamp", "asks", "bids", "lastUpdateId","symbol"  })
 public class OrderBook {
     private final String symbol;
     private final long lastUpdateId;
-    private final Map<Double, Double> bids; // Price -> Quantity (descending)
     private final Map<Double, Double> asks; // Price -> Quantity (ascending)
+    private final Map<Double, Double> bids; // Price -> Quantity (descending)
+    @JsonProperty("T")
     private final long timestamp;
 
     // Constructor for creating immutable snapshots

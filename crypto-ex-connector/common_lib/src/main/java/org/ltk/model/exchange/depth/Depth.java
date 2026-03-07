@@ -1,9 +1,13 @@
 package org.ltk.model.exchange.depth;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public class Depth {
     private long lastUpdateId;
+    @JsonProperty("T")
+    private long transactionTime;
     private List<List<Double>> bids; // PRICE : QTY
     private List<List<Double>> asks; // PRICE : QTY
 
@@ -29,5 +33,13 @@ public class Depth {
 
     public void setAsks(List<List<Double>> asks) {
         this.asks = asks;
+    }
+
+    public long getTransactionTime() {
+        return transactionTime;
+    }
+
+    public void setTransactionTime(long transactionTime) {
+        this.transactionTime = transactionTime;
     }
 }
