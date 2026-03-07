@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depth Price Chart</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .depth-bar {
+            position: absolute;
+            height: 1px;
+            pointer-events: none;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .depth-bar.bid {
+            background: rgba(81, 207, 102, 0.3);
+            border-right: 2px solid rgba(81, 207, 102, 0.8);
+        }
+        .depth-bar.ask {
+            background: rgba(255, 107, 107, 0.3);
+            border-right: 2px solid rgba(255, 107, 107, 0.8);
+        }
+        #chart-wrapper {
+            position: relative;
+        }
+        #depth-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="config-panel">
+            <h2>Configuration</h2>
+
+            <div class="config-section">
+                <h3>Timeframe</h3>
+                <div class="timeframe-buttons">
+                    <button class="timeframe-btn active" data-interval="1m">1m</button>
+                    <button class="timeframe-btn" data-interval="3m">3m</button>
+                    <button class="timeframe-btn" data-interval="5m">5m</button>
+                    <button class="timeframe-btn" data-interval="15m">15m</button>
+                    <button class="timeframe-btn" data-interval="30m">30m</button>
+                    <button class="timeframe-btn" data-interval="1h">1h</button>
+                    <button class="timeframe-btn" data-interval="2h">2h</button>
+                    <button class="timeframe-btn" data-interval="4h">4h</button>
+                    <button class="timeframe-btn" data-interval="6h">6h</button>
+                    <button class="timeframe-btn" data-interval="8h">8h</button>
+                    <button class="timeframe-btn" data-interval="12h">12h</button>
+                    <button class="timeframe-btn" data-interval="1d">1d</button>
+                    <button class="timeframe-btn" data-interval="3d">3d</button>
+                    <button class="timeframe-btn" data-interval="1w">1w</button>
+                    <button class="timeframe-btn" data-interval="1M">1M</button>
+                </div>
+            </div>
+
+            <div class="config-item">
+                <label>Update Interval</label>
+                <span id="interval-display">1s</span>
+            </div>
+            <div class="config-item">
+                <label>Current Price</label>
+                <span id="current-price">--</span>
+            </div>
+            <div class="config-item">
+                <label>Resistance Level</label>
+                <span id="resistance-level" class="resistance">--</span>
+            </div>
+            <div class="config-item">
+                <label>Support Level</label>
+                <span id="support-level" class="support">--</span>
+            </div>
+            <div class="config-item">
+                <label>Data Points</label>
+                <span id="data-count">0</span>
+            </div>
+            <div class="config-item">
+                <label>Next Candle In</label>
+                <span id="countdown-display">00:00:00</span>
+            </div>
+            <div class="config-item">
+                <label>Orderbook Status</label>
+                <span id="orderbook-status">Disconnected</span>
+            </div>
+        </aside>
+
+        <main class="chart-area">
+            <h1>Real-Time Price Chart with Depth</h1>
+            <div id="chart-wrapper">
+                <div id="chart"></div>
+                <div id="depth-overlay"></div>
+                <div id="price-countdown"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+
+        // Utility functions
+        function getRemainingTime(currentDateTime, interval, candleStartTime) {
+            const now = new Date(currentDateTime);
+            const timeframeMs = intervalToMilliseconds(interval);
+
+            if (candleStartTime) {
+                const candleEndTime = candleStartTime + timeframeMs;
+                const remainingMs = candleEndTime - now.getTime();
+
+                if (remainingMs <= 0) {
+                    return { totalMilliseconds: 0, hours: 0, minutes: 0, seconds: 0 };
+                }
+
+                const seconds = Math.floor((remainingMs / 1000) % 60);
+                const minutes = Math.floor((remainingMs / (1000 * 60)) % 60);
+                const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+                const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+
+                return { totalMilliseconds: remainingMs, days, hours, minutes, seconds };
+            } else {
+                const currentMs = now.getTime();
+                const remainder = currentMs % timeframeMs;
+                const remainingMs = timeframeMs - remainder;
+
+                const seconds = Math.floor((remainingMs / 1000) % 60);
+                const minutes = Math.floor((remainingMs / (1000 * 60)) % 60);
+                const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+                const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+
+                return { totalMilliseconds: remainingMs, days, hours, minutes, seconds };
+            }
+        }
+
+        function intervalToMilliseconds(interval) {
+            const value = parseInt(interval);
+            const unit = interval.slice(-1);
+
+            switch(unit) {
+                case 'm': return value * 60 * 1000;
+                case 'h': return value * 60 * 60 * 1000;
+                case 'H': return value * 60 * 60 * 1000;
+                case 'd': return value * 24 * 60 * 60 * 1000;
+                case 'D': return value * 24 * 60 * 60 * 1000;
+                case 'w': return value * 7 * 24 * 60 * 60 * 1000;
+                case 'W': return value * 7 * 24 * 60 * 60 * 1000;
+                case 'M': return value * 30 * 24 * 60 * 60 * 1000;
+                default: return 60 * 1000;
+            }
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            const options = {
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            return date.toLocaleString('en-GB', options);
+        }
+
+        function formatCountdown(remaining) {
+            if (remaining.days > 0) {
+                return `${remaining.days}d ${remaining.hours.toString().padStart(2, '0')}:${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+            } else if (remaining.hours > 0) {
+                return `${remaining.hours.toString().padStart(2, '0')}:${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+            } else {
+                return `${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Global state
+        let chart = null;
+        let candleSeries = null;
+        let resistanceLine = null;
+        let supportLine = null;
+        let priceEventSource = null;
+        let orderbookEventSource = null;
+
+        const state = {
+            dataIndex: 0,
+            allCandles: [],
+            currentInterval: '1m',
+            countdownId: null,
+            startTime: Date.now(),
+            orderbook: { bids: {}, asks: {} },
+            currentPrice: null
+        };
+
+        // Load kLines data
+        async function loadKLines(interval) {
+            try {
+                const response = await fetch(`http://localhost:8080/binance/kLines?interval=${interval}`);
+                const kLines = await response.json();
+
+                state.allCandles = kLines.map(kline => ({
+                    time: Math.floor(kline.openTime / 1000),
+                    open: kline.openPrice,
+                    high: kline.highPrice,
+                    low: kline.lowPrice,
+                    close: kline.closePrice
+                }));
+
+                state.dataIndex = state.allCandles.length;
+                redrawChart();
+            } catch (error) {
+                console.error('Error loading kLines:', error);
+            }
+        }
+
+        // Connect to price SSE
+        function connectPriceSSE() {
+            priceEventSource = new EventSource('http://localhost:8080/okx/stream/prices');
+
+            priceEventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handlePriceUpdate(data);
+                } catch (error) {
+                    console.error('Error parsing price SSE data:', error);
+                }
+            };
+
+            priceEventSource.onerror = (error) => {
+                console.error('Price SSE connection error:', error);
+                priceEventSource.close();
+                setTimeout(() => {
+                    console.log('Attempting to reconnect price stream...');
+                    connectPriceSSE();
+                }, 5000);
+            };
+
+            return priceEventSource;
+        }
+
+        // Connect to orderbook SSE
+        function connectOrderbookSSE() {
+            orderbookEventSource = new EventSource('http://localhost:8080/binance/stream/orderbook');
+
+            orderbookEventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleOrderbookUpdate(data);
+                    document.getElementById('orderbook-status').textContent = 'Connected';
+                    document.getElementById('orderbook-status').style.color = '#26a69a';
+                } catch (error) {
+                    console.error('Error parsing orderbook SSE data:', error);
+                }
+            };
+
+            orderbookEventSource.onerror = (error) => {
+                console.error('Orderbook SSE connection error:', error);
+                document.getElementById('orderbook-status').textContent = 'Disconnected';
+                document.getElementById('orderbook-status').style.color = '#ef5350';
+                orderbookEventSource.close();
+                setTimeout(() => {
+                    console.log('Attempting to reconnect orderbook stream...');
+                    connectOrderbookSSE();
+                }, 5000);
+            };
+
+            return orderbookEventSource;
+        }
+
+        // Handle orderbook updates
+        function handleOrderbookUpdate(data) {
+            if (!data || !data.bids || !data.asks) {
+                console.error('Invalid orderbook data:', data);
+                return;
+            }
+
+            state.orderbook = {
+                bids: data.bids,
+                asks: data.asks
+            };
+
+            renderDepthChart();
+        }
+
+
+        // Render depth chart overlay
+        function renderDepthChart() {
+            if (!chart || !candleSeries || !state.currentPrice) return;
+
+            const depthOverlay = document.getElementById('depth-overlay');
+            if (!depthOverlay) return;
+
+            // Clear existing bars
+            depthOverlay.innerHTML = '';
+
+            const chartContainer = document.getElementById('chart');
+            const chartWidth = chartContainer.clientWidth;
+
+            // Get price scale info
+            const priceScale = chart.priceScale('right');
+            const visibleRange = chart.timeScale().getVisibleLogicalRange();
+            
+            if (!visibleRange) return;
+
+            // Process bids (below current price)
+            const bids = Object.entries(state.orderbook.bids)
+                .map(([price, quantity]) => ({ price: parseFloat(price), quantity }))
+                .sort((a, b) => b.price - a.price);
+
+            // Process asks (above current price)
+            const asks = Object.entries(state.orderbook.asks)
+                .map(([price, quantity]) => ({ price: parseFloat(price), quantity }))
+                .sort((a, b) => a.price - b.price);
+
+            // Calculate cumulative quantities
+            let cumulativeBids = [];
+            let cumQty = 0;
+            for (const bid of bids) {
+                cumQty += bid.quantity;
+                cumulativeBids.push({ price: bid.price, cumQuantity: cumQty });
+            }
+
+            let cumulativeAsks = [];
+            cumQty = 0;
+            for (const ask of asks) {
+                cumQty += ask.quantity;
+                cumulativeAsks.push({ price: ask.price, cumQuantity: cumQty });
+            }
+
+            // Find max cumulative quantity for scaling
+            const maxBidQty = cumulativeBids.length > 0 ? cumulativeBids[cumulativeBids.length - 1].cumQuantity : 0;
+            const maxAskQty = cumulativeAsks.length > 0 ? cumulativeAsks[cumulativeAsks.length - 1].cumQuantity : 0;
+            const maxQuantity = Math.max(maxBidQty, maxAskQty);
+
+            if (maxQuantity === 0) return;
+
+            // Max width for depth bars (30% of chart width)
+            const maxBarWidth = chartWidth * 0.3;
+
+            // Render bid bars (green, below current price)
+            cumulativeBids.forEach(bid => {
+                const yCoord = candleSeries.priceToCoordinate(bid.price);
+                if (yCoord === null || yCoord === undefined) return;
+
+                const barWidth = (bid.cumQuantity / maxQuantity) * maxBarWidth;
+
+                const bar = document.createElement('div');
+                bar.className = 'depth-bar bid';
+                bar.style.top = `${yCoord}px`;
+                bar.style.right = '0px';
+                bar.style.width = `${barWidth}px`;
+                depthOverlay.appendChild(bar);
+            });
+
+            // Render ask bars (red, above current price)
+            cumulativeAsks.forEach(ask => {
+                const yCoord = candleSeries.priceToCoordinate(ask.price);
+                if (yCoord === null || yCoord === undefined) return;
+
+                const barWidth = (ask.cumQuantity / maxQuantity) * maxBarWidth;
+
+                const bar = document.createElement('div');
+                bar.className = 'depth-bar ask';
+                bar.style.top = `${yCoord}px`;
+                bar.style.right = '0px';
+                bar.style.width = `${barWidth}px`;
+                depthOverlay.appendChild(bar);
+            });
+        }
+
+        // Handle price updates
+        function handlePriceUpdate(data) {
+            if (!data || typeof data.middle === 'undefined') {
+                console.error('Invalid price data received:', data);
+                return;
+            }
+
+            const price = data.middle;
+            state.currentPrice = price;
+            const currentTime = Date.now();
+
+            document.getElementById('current-price').textContent = `$${data.middle}`;
+            document.getElementById('resistance-level').textContent = `$${data.top}`;
+            document.getElementById('support-level').textContent = `$${data.bottom}`;
+            document.getElementById('data-count').textContent = `${state.allCandles.length}`;
+
+            if (resistanceLine) {
+                candleSeries.removePriceLine(resistanceLine);
+            }
+            resistanceLine = candleSeries.createPriceLine({
+                price: data.top,
+                color: 'rgba(255, 107, 107, 0.5)',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'R',
+            });
+
+            if (supportLine) {
+                candleSeries.removePriceLine(supportLine);
+            }
+            supportLine = candleSeries.createPriceLine({
+                price: data.bottom,
+                color: 'rgba(81, 207, 102, 0.5)',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'S',
+            });
+
+            // Update or create current candle
+            if (state.allCandles.length > 0) {
+                const lastCandle = state.allCandles[state.allCandles.length - 1];
+                const timeframeMs = intervalToMilliseconds(state.currentInterval);
+                const lastCandleEndTime = (lastCandle.time * 1000) + timeframeMs;
+
+                if (currentTime >= lastCandleEndTime) {
+                    const newCandleTime = Math.floor(currentTime / timeframeMs) * timeframeMs / 1000;
+                    const newCandle = {
+                        time: newCandleTime,
+                        open: price,
+                        high: price,
+                        low: price,
+                        close: price
+                    };
+                    state.allCandles.push(newCandle);
+                } else {
+                    lastCandle.close = price;
+                    lastCandle.high = Math.max(lastCandle.high, price);
+                    lastCandle.low = Math.min(lastCandle.low, price);
+                }
+            } else {
+                const timeframeMs = intervalToMilliseconds(state.currentInterval);
+                const newCandleTime = Math.floor(currentTime / timeframeMs) * timeframeMs / 1000;
+                const newCandle = {
+                    time: newCandleTime,
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price
+                };
+                state.allCandles.push(newCandle);
+            }
+
+            redrawChart();
+        }
+
+        function updateCountdown() {
+            const now = new Date();
+
+            let candleStartTimeMs = null;
+            if (state.allCandles.length > 0) {
+                const lastCandle = state.allCandles[state.allCandles.length - 1];
+                candleStartTimeMs = lastCandle.time * 1000;
+            }
+
+            const remaining = getRemainingTime(now, state.currentInterval, candleStartTimeMs);
+            const countdownText = formatCountdown(remaining);
+
+            const countdownEl = document.getElementById('countdown-display');
+            if (countdownEl) {
+                countdownEl.textContent = countdownText;
+            }
+        }
+
+        function updatePriceCountdown() {
+            const countdownEl = document.getElementById('price-countdown');
+            if (!countdownEl || state.allCandles.length === 0) {
+                if (countdownEl) countdownEl.style.display = 'none';
+                return;
+            }
+
+            const latestCandle = state.allCandles[state.allCandles.length - 1];
+            const candleStartTimeMs = latestCandle.time * 1000;
+
+            const remaining = getRemainingTime(new Date(), state.currentInterval, candleStartTimeMs);
+
+            let countdownText;
+            if (remaining.days > 0) {
+                countdownText = `${remaining.days}d ${remaining.hours}h`;
+            } else if (remaining.hours > 0) {
+                countdownText = `${remaining.hours}h ${remaining.minutes}m`;
+            } else {
+                countdownText = `${remaining.minutes.toString().padStart(2, '0')}:${remaining.seconds.toString().padStart(2, '0')}`;
+            }
+
+            const currentPrice = latestCandle.close;
+
+            try {
+                const coordinate = candleSeries.priceToCoordinate(currentPrice);
+
+                if (coordinate !== null && coordinate !== undefined) {
+                    countdownEl.innerHTML = `<div style="font-size: 16px;">${currentPrice.toFixed(2)}</div><div style="font-size: 12px; margin-top: 2px;">${countdownText}</div>`;
+                    countdownEl.style.top = `${coordinate - 20}px`;
+                    countdownEl.style.display = 'block';
+
+                    if (latestCandle.close >= latestCandle.open) {
+                        countdownEl.style.background = '#26a69a';
+                    } else {
+                        countdownEl.style.background = '#ef5350';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating price countdown:', error);
+            }
+        }
+
+        function redrawChart() {
+            candleSeries.setData(state.allCandles);
+            updatePriceCountdown();
+            updateCountdown();
+            renderDepthChart();
+        }
+
+
+        async function init() {
+            console.log('Initializing...');
+
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('LightweightCharts library not loaded!');
+                alert('Error: Chart library failed to load.');
+                return;
+            }
+
+            const chartContainer = document.getElementById('chart');
+            if (!chartContainer) {
+                console.error('Chart container not found!');
+                return;
+            }
+
+            try {
+                chart = LightweightCharts.createChart(chartContainer, {
+                    layout: {
+                        background: { color: '#1a1a2e' },
+                        textColor: '#e0e0e0',
+                    },
+                    grid: {
+                        vertLines: { color: '#2a2a3e' },
+                        horzLines: { color: '#2a2a3e' },
+                    },
+                    timeScale: {
+                        timeVisible: true,
+                        secondsVisible: true,
+                        borderColor: '#2a2a3e',
+                    },
+                    rightPriceScale: {
+                        borderColor: '#2a2a3e',
+                    },
+                    localization: {
+                        timeFormatter: (timestamp) => formatTime(timestamp),
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight,
+                });
+
+                candleSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderVisible: false,
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350',
+                });
+
+                chart.subscribeCrosshairMove((param) => {
+                    if (param.time) {
+                        const timeStr = formatTime(param.time);
+                        const data = param.seriesData.get(candleSeries);
+
+                        let ohlcText = timeStr;
+                        if (data) {
+                            ohlcText = `${timeStr}\nO: ${data.open.toFixed(2)} H: ${data.high.toFixed(2)} L: ${data.low.toFixed(2)} C: ${data.close.toFixed(2)}`;
+                        }
+
+                        chart.applyOptions({
+                            watermark: {
+                                visible: true,
+                                fontSize: 12,
+                                horzAlign: 'left',
+                                vertAlign: 'top',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                text: ohlcText,
+                            },
+                        });
+                    }
+                });
+
+                // Subscribe to visible range changes to update depth chart
+                chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                    renderDepthChart();
+                });
+
+                console.log('Chart created successfully');
+
+            } catch (error) {
+                console.error('Error creating chart:', error);
+                alert('Error creating chart: ' + error.message);
+                return;
+            }
+
+            window.addEventListener('resize', () => {
+                if (chart && chartContainer) {
+                    chart.applyOptions({
+                        width: chartContainer.clientWidth,
+                        height: chartContainer.clientHeight,
+                    });
+                    updatePriceCountdown();
+                    renderDepthChart();
+                }
+            });
+
+            // Timeframe button click handlers
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const newInterval = btn.dataset.interval;
+                    await changeInterval(newInterval);
+                });
+            });
+
+            // Load historical kLines first
+            await loadKLines(state.currentInterval);
+
+            // Connect to live price stream
+            console.log('Connecting to price SSE endpoint...');
+            priceEventSource = connectPriceSSE();
+
+            // Connect to orderbook stream
+            console.log('Connecting to orderbook SSE endpoint...');
+            orderbookEventSource = connectOrderbookSSE();
+
+            updateCountdown();
+            state.countdownId = setInterval(updateCountdown, 1000);
+        }
+
+        async function changeInterval(interval) {
+            console.log('Changing interval to', interval);
+            state.currentInterval = interval;
+            await loadKLines(interval);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
