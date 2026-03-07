@@ -592,7 +592,7 @@
                 const coordinate = candleSeries.priceToCoordinate(currentPrice);
 
                 if (coordinate !== null && coordinate !== undefined) {
-                    countdownEl.innerHTML = `<div style="font-size: 16px;">${currentPrice.toFixed(2)}</div><div style="font-size: 12px; margin-top: 2px;">${countdownText}</div>`;
+                    countdownEl.innerHTML = `<div style="font-size: 12px;">${currentPrice.toFixed(2)}</div><div style="font-size: 10px; margin-top: 1px;">${countdownText}</div>`;
                     countdownEl.style.top = `${coordinate - 20}px`;
                     countdownEl.style.display = 'block';
 
@@ -664,6 +664,7 @@
                     borderVisible: false,
                     wickUpColor: '#26a69a',
                     wickDownColor: '#ef5350',
+                    lastValueVisible: false,
                 });
 
                 chart.subscribeCrosshairMove((param) => {

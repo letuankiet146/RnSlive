@@ -130,14 +130,16 @@ body {
     right: 0;
     background: #26a69a;
     color: white;
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 3px 4px;
+    font-size: 11px;
     font-weight: bold;
-    border-radius: 4px;
+    border-radius: 2px;
     display: none;
     z-index: 10;
     pointer-events: none;
-    min-width: 70px;
+    width: 70px;
+    white-space: nowrap;
+    overflow: hidden;
     text-align: center;
-    line-height: 1.4;
+    line-height: 1.2;
 }
