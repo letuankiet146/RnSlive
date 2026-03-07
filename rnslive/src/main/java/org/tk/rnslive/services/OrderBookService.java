@@ -152,9 +152,9 @@ public class OrderBookService {
         
         // Step 5: First processed event validation
         if (!firstUpdateProcessed) {
-            // First event must have U <= lastUpdateId+1 AND u >= lastUpdateId+1
-            if (update.getFirstUpdateId() <= lastUpdateId + 1 && 
-                update.getFinalUpdateId() >= lastUpdateId + 1) {
+            // First event must have U <= lastUpdateId AND u >= lastUpdateId
+            if (update.getFirstUpdateId() <= lastUpdateId  &&
+                update.getFinalUpdateId() >= lastUpdateId) {
                 firstUpdateProcessed = true;
                 applyUpdate(update);
                 return true;
