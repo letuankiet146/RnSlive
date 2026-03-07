@@ -21,11 +21,11 @@
         }
         .depth-bar.bid {
             background: rgba(81, 207, 102, 0.3);
-            border-right: 2px solid rgba(81, 207, 102, 0.8);
+            border-left: 2px solid rgba(81, 207, 102, 0.8);
         }
         .depth-bar.ask {
             background: rgba(255, 107, 107, 0.3);
-            border-right: 2px solid rgba(255, 107, 107, 0.8);
+            border-left: 2px solid rgba(255, 107, 107, 0.8);
         }
         #chart-wrapper {
             position: relative;
@@ -437,7 +437,7 @@
                 const bar = document.createElement('div');
                 bar.className = 'depth-bar bid';
                 bar.style.top = `${yCoord}px`;
-                bar.style.right = '0px';
+                bar.style.left = '0px';
                 bar.style.width = `${barWidth}px`;
                 
                 // Add hover events
@@ -458,7 +458,7 @@
                 const bar = document.createElement('div');
                 bar.className = 'depth-bar ask';
                 bar.style.top = `${yCoord}px`;
-                bar.style.right = '0px';
+                bar.style.left = '0px';
                 bar.style.width = `${barWidth}px`;
                 
                 // Add hover events
