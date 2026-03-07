@@ -85,10 +85,7 @@ public class OrderBookService {
                     updateBuffer.offer(update);
                 } else {
                     synchronized (this) {
-                        boolean processed = processUpdate(update);
-                        LOGGER.info("Real-time update: U={}, u={}, pu={}, processed={}", 
-                            update.getFirstUpdateId(), update.getFinalUpdateId(), 
-                            update.getPreviousFinalUpdateId(), processed);
+                        processUpdate(update);
                     }
                 }
             }
@@ -201,7 +198,7 @@ public class OrderBookService {
         }
         
         this.lastUpdateId = update.getFinalUpdateId();
-        this.timestamp = update.getEventTime();
+        this.timestamp = update.getTransactionTime();
         lastProcessedUpdateId = update.getFinalUpdateId();
         
         emitOrderBook();
