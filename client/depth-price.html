@@ -795,3 +795,15 @@
     </script>
 </body>
 </html>
+    <script src="symbol-selector.js"></script>
+    <script>
+        // Initialize dynamic symbol selector
+        window.addEventListener('DOMContentLoaded', () => {
+            const symbolSelector = new SymbolSelector('symbolSelect', {
+                defaultSymbol: 'BTCUSDT',
+                onSymbolChange: (symbol) => {
+                    updateSymbol(symbol);
+                }
+            });
+        });
+    </script>

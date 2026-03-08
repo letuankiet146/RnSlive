@@ -116,12 +116,11 @@
 <body>
     <div class="container">
         <h1>📊 Binance OrderBook</h1>
-        
+
         <div class="symbol-selector">
             <label for="symbolSelect">Symbol:</label>
             <select id="symbolSelect">
                 <option value="BTCUSDT">BTCUSDT</option>
-                <option value="XRPUSDT">XRPUSDT</option>
             </select>
         </div>
 
@@ -151,6 +150,7 @@
         </div>
     </div>
 
+    <script src="symbol-selector.js"></script>
     <script>
         let eventSource = null;
         let currentSymbol = 'BTCUSDT';
@@ -161,7 +161,6 @@
         const asksListEl = document.getElementById('asks-list');
         const bidsListEl = document.getElementById('bids-list');
         const currentSymbolEl = document.getElementById('currentSymbol');
-        const symbolSelect = document.getElementById('symbolSelect');
 
         function connectOrderBook(symbol) {
             // Close existing connection
@@ -233,9 +232,12 @@
             };
         }
 
-        // Symbol selector change handler
-        symbolSelect.addEventListener('change', (e) => {
-            connectOrderBook(e.target.value);
+        // Initialize dynamic symbol selector
+        const symbolSelector = new SymbolSelector('symbolSelect', {
+            defaultSymbol: 'BTCUSDT',
+            onSymbolChange: (symbol) => {
+                connectOrderBook(symbol);
+            }
         });
 
         // Initial connection
