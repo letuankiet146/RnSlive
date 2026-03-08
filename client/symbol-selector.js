@@ -205,10 +205,17 @@ class SymbolSelector {
         this.selectButton.addEventListener('click', (e) => {
             e.stopPropagation();
             const isVisible = this.dropdownList.style.display === 'block';
-            this.dropdownList.style.display = isVisible ? 'none' : 'block';
             
-            // Focus search input when dropdown opens
-            if (!isVisible) {
+            if (isVisible) {
+                this.dropdownList.style.display = 'none';
+            } else {
+                // Reset search and filtered symbols when opening dropdown
+                this.searchInput.value = '';
+                this.filteredSymbols = [...this.symbols];
+                this.populateDropdown(this.optionsContainer, this.selectButton);
+                this.dropdownList.style.display = 'block';
+                
+                // Focus search input when dropdown opens
                 setTimeout(() => this.searchInput.focus(), 50);
             }
         });
