@@ -2,14 +2,10 @@ package org.tk.rnslive.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import org.ltk.connector.client.ExchangeName;
 import org.ltk.connector.service.ExchangeService;
-import org.ltk.model.exchange.depth.Depth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.tk.rnslive.model.DepthUpdate;
 import org.tk.rnslive.model.OrderBook;
 import reactor.core.publisher.Flux;
@@ -18,69 +14,101 @@ import reactor.core.publisher.Sinks;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
-@Service
-public class OrderBookService {
+/**
+ * Single orderbook instance for one symbol
+ * Isolated state management for thread safety and performance
+ */
+public class SingleOrderBookService {
 
-    @Autowired
-    private ExchangeService exchangeService;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(OrderBookService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleOrderBookService.class);
     private final ObjectMapper mapper = new ObjectMapper();
-    private final Sinks.Many<OrderBook> orderBookSink = Sinks.many().replay().latest();
+    private final ExchangeService exchangeService;
     
-    private final ConcurrentLinkedQueue<DepthUpdate> updateBuffer = new ConcurrentLinkedQueue<>();
+    // Symbol-specific state
+    private final String symbol;
+    private final Sinks.Many<OrderBook> orderBookSink;
+    private final ConcurrentLinkedQueue<DepthUpdate> updateBuffer;
+    private final AtomicLong lastAccessTime;
     
-    private String symbol;
+    // Orderbook data
     private long lastUpdateId;
     private TreeMap<Double, Double> bids;
     private TreeMap<Double, Double> asks;
     private long timestamp;
     
-    private boolean isInitialized = false;
+    // State flags
+    private volatile boolean isInitialized = false;
+    private volatile boolean isRunning = false;
     private long lastProcessedUpdateId = -1;
     private boolean firstUpdateProcessed = false;
 
-    public Flux<OrderBook> getOrderBookStream() {
-        return orderBookSink.asFlux();
-    }
-
-    public Mono<OrderBook> snapshotOrderBook() {
-        return getOrderBookStream().next();
-    }
-
-    public Mono<Depth> getSnapshotDepth() {
-        return exchangeService.getDepth(ExchangeName.BINANCE, symbol, 1000);
-    }
-
-    @PostConstruct
-    public void init() {
-        startOrderBook("BTCUSDT");
-    }
-
-    private void startOrderBook(String symbol) {
+    public SingleOrderBookService(ExchangeService exchangeService, String symbol) {
+        this.exchangeService = exchangeService;
         this.symbol = symbol;
+        this.orderBookSink = Sinks.many().replay().latest();
+        this.updateBuffer = new ConcurrentLinkedQueue<>();
+        this.lastAccessTime = new AtomicLong(System.currentTimeMillis());
         this.bids = new TreeMap<>((a, b) -> Double.compare(b, a));
         this.asks = new TreeMap<>();
+    }
+
+    public void start() {
+        if (isRunning) {
+            LOGGER.warn("OrderBook for {} is already running", symbol);
+            return;
+        }
+        
+        isRunning = true;
         this.timestamp = System.currentTimeMillis();
         
-        LOGGER.info("Step 1: Opening WebSocket stream for {}", symbol);
+        LOGGER.info("Starting WebSocket stream for {}", symbol);
         exchangeService.subscribeDepth(ExchangeName.BINANCE, symbol, null, this::bufferDepthUpdate);
         
+        // Initialize after brief delay to allow WebSocket connection
         new Thread(() -> {
             try {
                 Thread.sleep(2000);
-                initializeOrderBook(symbol);
+                initializeOrderBook();
             } catch (Exception e) {
-                LOGGER.error("Error initializing orderbook", e);
+                LOGGER.error("Error initializing orderbook for {}", symbol, e);
             }
         }).start();
     }
 
+    public void stop() {
+        isRunning = false;
+        isInitialized = false;
+        updateBuffer.clear();
+        orderBookSink.tryEmitComplete();
+        LOGGER.info("Stopped orderbook for {}", symbol);
+    }
+
+    public Flux<OrderBook> getOrderBookStream() {
+        updateLastAccessTime();
+        return orderBookSink.asFlux();
+    }
+
+    public Mono<OrderBook> snapshotOrderBook() {
+        updateLastAccessTime();
+        return getOrderBookStream().next();
+    }
+
+    public long getLastAccessTime() {
+        return lastAccessTime.get();
+    }
+
+    private void updateLastAccessTime() {
+        lastAccessTime.set(System.currentTimeMillis());
+    }
+
     private void bufferDepthUpdate(String json) {
+        if (!isRunning) return;
+        
         try {
             DepthUpdate update = parseDepthUpdate(json);
-            if (update != null) {
+            if (update != null && update.getSymbol().equals(symbol)) {
                 if (!isInitialized) {
                     updateBuffer.offer(update);
                 } else {
@@ -90,44 +118,42 @@ public class OrderBookService {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("Error buffering depth update", e);
+            LOGGER.error("Error buffering depth update for {}", symbol, e);
         }
     }
 
-    private void initializeOrderBook(String symbol) {
-        LOGGER.info("Step 3: Fetching depth snapshot for {}", symbol);
+    private void initializeOrderBook() {
+        LOGGER.info("Fetching depth snapshot for {}", symbol);
         exchangeService.getDepth(ExchangeName.BINANCE, symbol, 1000)
             .subscribe(
                 depth -> {
                     try {
                         synchronized (this) {
                             this.lastUpdateId = depth.getLastUpdateId();
-                            
+
                             for (List<Double> bid : depth.getBids()) {
                                 updateBid(bid.get(0), bid.get(1));
                             }
-                            
+
                             for (List<Double> ask : depth.getAsks()) {
                                 updateAsk(ask.get(0), ask.get(1));
                             }
-                            
+
                             lastProcessedUpdateId = depth.getLastUpdateId();
-                            
-                            LOGGER.info("Snapshot received with lastUpdateId: {}, buffer size: {}", 
-                                depth.getLastUpdateId(), updateBuffer.size());
-                            
+                            LOGGER.info("Snapshot received for {} with lastUpdateId: {}, buffer size: {}",
+                                symbol, depth.getLastUpdateId(), updateBuffer.size());
+
                             isInitialized = true;
-                            
                             processBufferedUpdates();
                             emitOrderBook();
-                            
+
                             LOGGER.info("OrderBook fully initialized for {}", symbol);
                         }
                     } catch (Exception e) {
-                        LOGGER.error("Error processing depth snapshot", e);
+                        LOGGER.error("Error processing depth snapshot for {}", symbol, e);
                     }
                 },
-                error -> LOGGER.error("Error fetching depth snapshot", error)
+                error -> LOGGER.error("Error fetching depth snapshot for {}", symbol, error)
             );
     }
 
@@ -135,7 +161,7 @@ public class OrderBookService {
         DepthUpdate update;
         int processed = 0;
         int skipped = 0;
-        
+
         while ((update = updateBuffer.poll()) != null) {
             if (processUpdate(update)) {
                 processed++;
@@ -143,39 +169,35 @@ public class OrderBookService {
                 skipped++;
             }
         }
-        
-        LOGGER.info("Processed {} buffered updates, skipped {}", processed, skipped);
+
+        LOGGER.info("Processed {} buffered updates for {}, skipped {}", processed, symbol, skipped);
     }
 
     private boolean processUpdate(DepthUpdate update) {
-        // Step 4: Drop events where u <= lastUpdateId (already processed)
         if (update.getFinalUpdateId() <= lastUpdateId) {
             return false;
         }
-        
-        // Step 5: First processed event validation
+
         if (!firstUpdateProcessed) {
-            // First event must have U <= lastUpdateId AND u >= lastUpdateId
-            if (update.getFirstUpdateId() <= lastUpdateId  &&
+            if (update.getFirstUpdateId() <= lastUpdateId && 
                 update.getFinalUpdateId() >= lastUpdateId) {
                 firstUpdateProcessed = true;
                 applyUpdate(update);
                 return true;
             } else {
-                LOGGER.warn("Skipping first update: U={}, u={}, lastUpdateId={}", 
-                    update.getFirstUpdateId(), update.getFinalUpdateId(), lastUpdateId);
+                LOGGER.warn("Skipping first update for {}: U={}, u={}, lastUpdateId={}",
+                    symbol, update.getFirstUpdateId(), update.getFinalUpdateId(), lastUpdateId);
                 return false;
             }
         }
-        
-        // Step 6: Verify sequence (pu should equal previous u)
+
         if (update.getPreviousFinalUpdateId() != lastProcessedUpdateId) {
-            LOGGER.error("Sequence break! Expected pu={}, got pu={}. Reinitializing...", 
-                lastProcessedUpdateId, update.getPreviousFinalUpdateId());
+            LOGGER.error("Sequence break for {}! Expected pu={}, got pu={}. Reinitializing...",
+                symbol, lastProcessedUpdateId, update.getPreviousFinalUpdateId());
             reinitialize();
             return false;
         }
-        
+
         applyUpdate(update);
         return true;
     }
@@ -188,7 +210,7 @@ public class OrderBookService {
                 updateBid(price, quantity);
             }
         }
-        
+
         if (update.getAsks() != null) {
             for (List<String> ask : update.getAsks()) {
                 double price = Double.parseDouble(ask.get(0));
@@ -196,11 +218,11 @@ public class OrderBookService {
                 updateAsk(price, quantity);
             }
         }
-        
+
         this.lastUpdateId = update.getFinalUpdateId();
         this.timestamp = update.getTransactionTime();
         lastProcessedUpdateId = update.getFinalUpdateId();
-        
+
         emitOrderBook();
     }
 
@@ -230,25 +252,25 @@ public class OrderBookService {
 
         Sinks.EmitResult result = orderBookSink.tryEmitNext(snapshot);
         if (result.isFailure()) {
-            LOGGER.warn("Failed to emit orderbook: {}", result);
+            LOGGER.warn("Failed to emit orderbook for {}: {}", symbol, result);
         }
     }
 
     private void reinitialize() {
-        LOGGER.warn("Reinitializing orderbook due to sequence break");
+        LOGGER.warn("Reinitializing orderbook for {} due to sequence break", symbol);
         isInitialized = false;
         firstUpdateProcessed = false;
         updateBuffer.clear();
         lastProcessedUpdateId = -1;
         bids.clear();
         asks.clear();
-        initializeOrderBook(symbol);
+        initializeOrderBook();
     }
 
     private DepthUpdate parseDepthUpdate(String json) {
         try {
             JsonNode root = mapper.readTree(json);
-            
+
             DepthUpdate update = new DepthUpdate();
             update.setE(root.get("e").asText());
             update.setEventTime(root.get("E").asLong());
@@ -257,34 +279,34 @@ public class OrderBookService {
             update.setFirstUpdateId(root.get("U").asLong());
             update.setFinalUpdateId(root.get("u").asLong());
             update.setPreviousFinalUpdateId(root.get("pu").asLong());
-            
+
             JsonNode bidsNode = root.get("b");
             if (bidsNode != null && bidsNode.isArray()) {
-                List<List<String>> bids = new java.util.ArrayList<>();
+                List<List<String>> bids = new ArrayList<>();
                 for (JsonNode bidNode : bidsNode) {
-                    List<String> bid = new java.util.ArrayList<>();
+                    List<String> bid = new ArrayList<>();
                     bid.add(bidNode.get(0).asText());
                     bid.add(bidNode.get(1).asText());
                     bids.add(bid);
                 }
                 update.setBids(bids);
             }
-            
+
             JsonNode asksNode = root.get("a");
             if (asksNode != null && asksNode.isArray()) {
-                List<List<String>> asks = new java.util.ArrayList<>();
+                List<List<String>> asks = new ArrayList<>();
                 for (JsonNode askNode : asksNode) {
-                    List<String> ask = new java.util.ArrayList<>();
+                    List<String> ask = new ArrayList<>();
                     ask.add(askNode.get(0).asText());
                     ask.add(askNode.get(1).asText());
                     asks.add(ask);
                 }
                 update.setAsks(asks);
             }
-            
+
             return update;
         } catch (Exception e) {
-            LOGGER.error("Error parsing depth update", e);
+            LOGGER.error("Error parsing depth update for {}", symbol, e);
             return null;
         }
     }

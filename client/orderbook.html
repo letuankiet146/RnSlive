@@ -19,6 +19,30 @@
         h1 {
             text-align: center;
             color: #f0b90b;
+            margin-bottom: 10px;
+        }
+        .symbol-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .symbol-selector label {
+            color: #848e9c;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .symbol-selector select {
+            background: #1e2329;
+            color: #f0f0f0;
+            border: 1px solid #2b3139;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 150px;
+        }
+        .symbol-selector select:focus {
+            outline: none;
+            border-color: #f0b90b;
         }
         .info {
             text-align: center;
@@ -91,9 +115,19 @@
 </head>
 <body>
     <div class="container">
-        <h1>📊 Binance OrderBook - BTCUSDT</h1>
+        <h1>📊 Binance OrderBook</h1>
+        
+        <div class="symbol-selector">
+            <label for="symbolSelect">Symbol:</label>
+            <select id="symbolSelect">
+                <option value="BTCUSDT">BTCUSDT</option>
+                <option value="XRPUSDT">XRPUSDT</option>
+            </select>
+        </div>
+
         <div id="status" class="status disconnected">Connecting...</div>
         <div class="info">
+            <div>Symbol: <span id="currentSymbol">BTCUSDT</span></div>
             <div>Last Update ID: <span id="lastUpdateId">-</span></div>
             <div>Timestamp: <span id="timestamp">-</span></div>
         </div>
@@ -102,7 +136,7 @@
                 <h2>ASKS (Sell Orders)</h2>
                 <div class="header">
                     <div class="price">Price (USDT)</div>
-                    <div class="quantity">Quantity (BTC)</div>
+                    <div class="quantity">Quantity</div>
                 </div>
                 <div id="asks-list"></div>
             </div>
@@ -110,7 +144,7 @@
                 <h2>BIDS (Buy Orders)</h2>
                 <div class="header">
                     <div class="price">Price (USDT)</div>
-                    <div class="quantity">Quantity (BTC)</div>
+                    <div class="quantity">Quantity</div>
                 </div>
                 <div id="bids-list"></div>
             </div>
@@ -118,61 +152,94 @@
     </div>
 
     <script>
-        const eventSource = new EventSource('http://localhost:8080/binance/stream/orderbook');
+        let eventSource = null;
+        let currentSymbol = 'BTCUSDT';
+
         const statusEl = document.getElementById('status');
         const lastUpdateIdEl = document.getElementById('lastUpdateId');
         const timestampEl = document.getElementById('timestamp');
         const asksListEl = document.getElementById('asks-list');
         const bidsListEl = document.getElementById('bids-list');
+        const currentSymbolEl = document.getElementById('currentSymbol');
+        const symbolSelect = document.getElementById('symbolSelect');
 
-        eventSource.onopen = () => {
-            statusEl.textContent = 'Connected';
-            statusEl.className = 'status connected';
-        };
-
-        eventSource.onerror = () => {
-            statusEl.textContent = 'Disconnected';
-            statusEl.className = 'status disconnected';
-        };
-
-        eventSource.onmessage = (event) => {
-            try {
-                const orderBook = JSON.parse(event.data);
-                
-                // Update info
-                lastUpdateIdEl.textContent = orderBook.lastUpdateId;
-                const date = new Date(orderBook.timestamp);
-                timestampEl.textContent = date.toLocaleTimeString();
-
-                // Update asks (show top 20)
-                const asks = Object.entries(orderBook.asks)
-                    .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
-                    .slice(0, 20)
-                    .reverse();
-                
-                asksListEl.innerHTML = asks.map(([price, qty]) => `
-                    <div class="row">
-                        <div class="price">${parseFloat(price).toFixed(2)}</div>
-                        <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
-                    </div>
-                `).join('');
-
-                // Update bids (show top 20)
-                const bids = Object.entries(orderBook.bids)
-                    .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
-                    .slice(0, 20);
-                
-                bidsListEl.innerHTML = bids.map(([price, qty]) => `
-                    <div class="row">
-                        <div class="price">${parseFloat(price).toFixed(2)}</div>
-                        <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error parsing orderbook data:', error);
+        function connectOrderBook(symbol) {
+            // Close existing connection
+            if (eventSource) {
+                eventSource.close();
             }
-        };
+
+            currentSymbol = symbol;
+            currentSymbolEl.textContent = symbol;
+            statusEl.textContent = 'Connecting...';
+            statusEl.className = 'status disconnected';
+
+            // Clear orderbook
+            asksListEl.innerHTML = '';
+            bidsListEl.innerHTML = '';
+            lastUpdateIdEl.textContent = '-';
+            timestampEl.textContent = '-';
+
+            // Connect to new symbol
+            eventSource = new EventSource(`http://localhost:8080/binance/stream/orderbook?symbol=${symbol}`);
+
+            eventSource.onopen = () => {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'status connected';
+            };
+
+            eventSource.onerror = () => {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = 'status disconnected';
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const orderBook = JSON.parse(event.data);
+
+                    // Update info
+                    lastUpdateIdEl.textContent = orderBook.lastUpdateId;
+                    const date = new Date(orderBook.timestamp);
+                    timestampEl.textContent = date.toLocaleTimeString();
+
+                    // Update asks (show top 20)
+                    const asks = Object.entries(orderBook.asks)
+                        .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                        .slice(0, 20)
+                        .reverse();
+
+                    asksListEl.innerHTML = asks.map(([price, qty]) => `
+                        <div class="row">
+                            <div class="price">${parseFloat(price).toFixed(2)}</div>
+                            <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
+                        </div>
+                    `).join('');
+
+                    // Update bids (show top 20)
+                    const bids = Object.entries(orderBook.bids)
+                        .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
+                        .slice(0, 20);
+
+                    bidsListEl.innerHTML = bids.map(([price, qty]) => `
+                        <div class="row">
+                            <div class="price">${parseFloat(price).toFixed(2)}</div>
+                            <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    console.error('Error parsing orderbook data:', error);
+                }
+            };
+        }
+
+        // Symbol selector change handler
+        symbolSelect.addEventListener('change', (e) => {
+            connectOrderBook(e.target.value);
+        });
+
+        // Initial connection
+        connectOrderBook(currentSymbol);
     </script>
 </body>
 </html>

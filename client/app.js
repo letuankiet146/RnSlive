@@ -1,3 +1,4 @@
+let currentSymbol = 'BTCUSDT';
 function getRemainingTime(currentDateTime, interval, candleStartTime) {
     const now = new Date(currentDateTime);
     const timeframeMs = intervalToMilliseconds(interval);
@@ -58,7 +59,7 @@ console.log('Script loaded!');
 // Load kLines data for specific interval
 async function loadKLines(interval) {
     try {
-        const response = await fetch(`http://localhost:8080/binance/kLines?interval=${interval}`);
+        const response = await fetch(`http://localhost:8080/binance/kLines?symbol=${currentSymbol}&interval=${interval}`);
         const kLines = await response.json();
         
         console.log('Loaded kLines:', kLines.length, 'for interval:', interval);
@@ -84,7 +85,7 @@ async function loadKLines(interval) {
 }
 
 function connectSSE() {
-    const eventSource = new EventSource('http://localhost:8080/okx/stream/prices');
+    const eventSource = new EventSource(`http://localhost:8080/binance/stream/prices?symbol=${currentSymbol}`);
 
     eventSource.onmessage = (event) => {
         try {
@@ -419,4 +420,43 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
+}
+
+// Symbol selector handler
+function updateSymbol(newSymbol) {
+    if (newSymbol === currentSymbol) return;
+    
+    currentSymbol = newSymbol;
+    
+    // Close existing connection
+    if (eventSource) {
+        eventSource.close();
+    }
+    
+    // Clear data
+    state.allCandles = [];
+    state.dataIndex = 0;
+    
+    // Reload with new symbol
+    loadKLines(state.currentInterval);
+    eventSource = connectSSE();
+}
+
+// Add event listener after DOM loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        const symbolSelect = document.getElementById('symbolSelect');
+        if (symbolSelect) {
+            symbolSelect.addEventListener('change', (e) => {
+                updateSymbol(e.target.value);
+            });
+        }
+    });
+} else {
+    const symbolSelect = document.getElementById('symbolSelect');
+    if (symbolSelect) {
+        symbolSelect.addEventListener('change', (e) => {
+            updateSymbol(e.target.value);
+        });
+    }
 }

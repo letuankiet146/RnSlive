@@ -3,34 +3,40 @@ package org.tk.rnslive.controller;
 import org.ltk.model.exchange.depth.Depth;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.tk.rnslive.model.OrderBook;
-import org.tk.rnslive.services.OrderBookService;
+import org.tk.rnslive.services.OrderBookManager;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @RestController
 public class OrderBookController {
-    private final OrderBookService orderBookService;
+    private final OrderBookManager orderBookManager;
 
-    public OrderBookController(OrderBookService orderBookService) {
-        this.orderBookService = orderBookService;
+    public OrderBookController(OrderBookManager orderBookManager) {
+        this.orderBookManager = orderBookManager;
     }
 
     @GetMapping(value = "/binance/stream/orderbook", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<OrderBook> streamOrderBook() {
-        return orderBookService.getOrderBookStream();
+    public Flux<OrderBook> streamOrderBook(@RequestParam(defaultValue = "BTCUSDT") String symbol) {
+        return orderBookManager.getOrderBookStream(symbol);
     }
 
     @GetMapping(value = "/binance/snapshot/depth", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Depth> getSnapshotDepth() {
-        return orderBookService.getSnapshotDepth();
+    public Mono<Depth> getSnapshotDepth(@RequestParam(defaultValue = "BTCUSDT") String symbol) {
+        return orderBookManager.getSnapshotDepth(symbol);
     }
 
     @GetMapping(value = "/binance/snapshot/orderbook", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<OrderBook> snapshotOrderBook() {
-        return orderBookService.snapshotOrderBook().map(orderBook -> {
-            return orderBook;
-        });
+    public Mono<OrderBook> snapshotOrderBook(@RequestParam(defaultValue = "BTCUSDT") String symbol) {
+        return orderBookManager.snapshotOrderBook(symbol);
+    }
+
+    @GetMapping(value = "/binance/orderbook/stats", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> getOrderBookStats() {
+        return orderBookManager.getStats();
     }
 }

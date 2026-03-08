@@ -85,6 +85,14 @@
             <h2>Configuration</h2>
 
             <div class="config-section">
+                <h3>Symbol</h3>
+                <select id="symbolSelect" style="width: 100%; padding: 8px; background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e; border-radius: 4px; cursor: pointer;">
+                    <option value="BTCUSDT">BTCUSDT</option>
+                    <option value="XRPUSDT">XRPUSDT</option>
+                </select>
+            </div>
+
+            <div class="config-section">
                 <h3>Timeframe</h3>
                 <div class="timeframe-buttons">
                     <button class="timeframe-btn" data-interval="1m">1m</button>
@@ -285,7 +293,7 @@
         // Load kLines data
         async function loadKLines(interval) {
             try {
-                const response = await fetch(`http://localhost:8080/binance/kLines?interval=${interval}`);
+                const response = await fetch(`http://localhost:8080/binance/kLines?symbol=${currentSymbol}&interval=${interval}`);
                 const kLines = await response.json();
 
                 state.allCandles = kLines.map(kline => ({
@@ -305,7 +313,7 @@
 
         // Connect to price SSE
         function connectPriceSSE() {
-            priceEventSource = new EventSource('http://localhost:8080/okx/stream/prices');
+            priceEventSource = new EventSource(`http://localhost:8080/binance/stream/prices?symbol=${currentSymbol}`);
 
             priceEventSource.onmessage = (event) => {
                 try {
@@ -330,7 +338,7 @@
 
         // Connect to orderbook SSE
         function connectOrderbookSSE() {
-            orderbookEventSource = new EventSource('http://localhost:8080/binance/stream/orderbook');
+            orderbookEventSource = new EventSource(`http://localhost:8080/binance/stream/orderbook?symbol=${currentSymbol}`);
 
             orderbookEventSource.onmessage = (event) => {
                 try {
@@ -615,6 +623,34 @@
         }
 
 
+        // Symbol selector handler
+        let currentSymbol = 'BTCUSDT';
+        
+        function updateSymbol(newSymbol) {
+            if (newSymbol === currentSymbol) return;
+            
+            currentSymbol = newSymbol;
+            
+            // Close existing connections
+            if (priceEventSource) {
+                priceEventSource.close();
+            }
+            if (orderbookEventSource) {
+                orderbookEventSource.close();
+            }
+            
+            // Clear data
+            state.allCandles = [];
+            state.dataIndex = 0;
+            state.orderbook = { bids: {}, asks: {} };
+            
+            // Reload with new symbol
+            loadKLines(state.currentInterval);
+            priceEventSource = connectPriceSSE();
+            orderbookEventSource = connectOrderbookSSE();
+        }
+
+
         async function init() {
             console.log('Initializing...');
 
@@ -738,6 +774,11 @@
 
             updateCountdown();
             state.countdownId = setInterval(updateCountdown, 1000);
+
+            // Symbol selector event listener
+            document.getElementById('symbolSelect').addEventListener('change', (e) => {
+                updateSymbol(e.target.value);
+            });
         }
 
         async function changeInterval(interval) {
