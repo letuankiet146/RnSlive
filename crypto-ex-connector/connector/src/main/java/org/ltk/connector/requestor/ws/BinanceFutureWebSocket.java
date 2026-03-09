@@ -1,6 +1,7 @@
 package org.ltk.connector.requestor.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,11 +12,14 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.WebsocketClientSpec;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.Timer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.ltk.connector.client.RESTApiUrl.BINANCE_BASE_WEBSOCKET_URI;
 
@@ -32,7 +36,17 @@ public class BinanceFutureWebSocket extends BaseFutureWebsocket {
     @Autowired
     private Timer timer;
 
-    private final ReactorNettyWebSocketClient webSocketClient = new ReactorNettyWebSocketClient();
+    private static ReactorNettyWebSocketClient webSocketClient;
+
+    @PostConstruct
+    public void init() {
+        Supplier<WebsocketClientSpec.Builder> specSupplier =
+                () -> WebsocketClientSpec.builder()
+                        .maxFramePayloadLength(2 * 1024 * 1024); // 2 MB
+
+        HttpClient httpClient = HttpClient.create();
+        webSocketClient = new ReactorNettyWebSocketClient(httpClient, specSupplier );
+    }
 
     @Override
     public void subscribe(String path, Consumer<String> callback) {

@@ -117,15 +117,6 @@ public class SinglePriceService {
         double resistance = currentPrice * 1.2;
         double support = currentPrice * 0.8;
         
-        return new PriceDto(
-            round(resistance), 
-            round(currentPrice), 
-            round(support), 
-            timestamp
-        );
-    }
-
-    private double round(double value) {
-        return Math.round(value * 100.0) / 100.0;
+        return new PriceDto(resistance, currentPrice, support, timestamp);
     }
 }
