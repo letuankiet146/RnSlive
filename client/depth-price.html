@@ -237,7 +237,7 @@
             const tooltip = document.getElementById('depth-tooltip');
             tooltip.innerHTML = `
                 <div><strong>${type === 'bid' ? 'Bid' : 'Ask'}</strong></div>
-                <div>Price: $${price.toFixed(2)}</div>
+                <div>Price: $${price.toFixed(state.pricePrecision)}</div>
                 <div>Cumulative: ${quantity.toFixed(4)}</div>
             `;
             tooltip.style.display = 'block';
@@ -287,7 +287,8 @@
             countdownId: null,
             startTime: Date.now(),
             orderbook: { bids: {}, asks: {} },
-            currentPrice: null
+            currentPrice: null,
+            pricePrecision: 2  // Default precision
         };
 
         // Load kLines data
@@ -600,7 +601,7 @@
                 const coordinate = candleSeries.priceToCoordinate(currentPrice);
 
                 if (coordinate !== null && coordinate !== undefined) {
-                    countdownEl.innerHTML = `<div style="font-size: 12px;">${currentPrice.toFixed(2)}</div><div style="font-size: 10px; margin-top: 1px;">${countdownText}</div>`;
+                    countdownEl.innerHTML = `<div style="font-size: 12px;">${currentPrice.toFixed(state.pricePrecision)}</div><div style="font-size: 10px; margin-top: 1px;">${countdownText}</div>`;
                     countdownEl.style.top = `${coordinate - 20}px`;
                     countdownEl.style.display = 'block';
 
@@ -625,11 +626,12 @@
 
         // Symbol selector handler
         let currentSymbol = 'BTCUSDT';
-        
-        function updateSymbol(newSymbol) {
+        function updateSymbol(newSymbol, pricePrecision, tickSize) {
+
             if (newSymbol === currentSymbol) return;
             
             currentSymbol = newSymbol;
+            state.pricePrecision = pricePrecision;
             
             // Close existing connections
             if (priceEventSource) {
@@ -645,6 +647,13 @@
             state.orderbook = { bids: {}, asks: {} };
             
             // Reload with new symbol
+            candleSeries.applyOptions({
+                priceFormat: {
+                        type: 'price',
+                        precision: pricePrecision,
+                        minMove: tickSize
+                },
+            });
             loadKLines(state.currentInterval);
             priceEventSource = connectPriceSSE();
             orderbookEventSource = connectOrderbookSSE();
@@ -710,7 +719,7 @@
 
                         let ohlcText = timeStr;
                         if (data) {
-                            ohlcText = `${timeStr}\nO: ${data.open.toFixed(2)} H: ${data.high.toFixed(2)} L: ${data.low.toFixed(2)} C: ${data.close.toFixed(2)}`;
+                            ohlcText = `${timeStr}\nO: ${data.open.toFixed(state.pricePrecision)} H: ${data.high.toFixed(state.pricePrecision)} L: ${data.low.toFixed(state.pricePrecision)} C: ${data.close.toFixed(state.pricePrecision)}`;
                         }
 
                         chart.applyOptions({
@@ -801,8 +810,8 @@
         window.addEventListener('DOMContentLoaded', () => {
             const symbolSelector = new SymbolSelector('symbolSelect', {
                 defaultSymbol: 'BTCUSDT',
-                onSymbolChange: (symbol) => {
-                    updateSymbol(symbol);
+                onSymbolChange: (symbol, pricePrecision, tickSize) => {
+                    updateSymbol(symbol, pricePrecision, tickSize);
                 }
             });
         });

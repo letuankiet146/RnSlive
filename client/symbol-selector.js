@@ -29,13 +29,22 @@ class SymbolSelector {
             // Filter for PERPETUAL contracts with TRADING status
             this.symbols = data.symbols
                 .filter(s => s.contractType === 'PERPETUAL' && s.status === 'TRADING')
-                .map(s => ({
-                    symbol: s.symbol,
-                    baseAsset: s.baseAsset,
-                    quoteAsset: s.quoteAsset,
-                    pricePrecision: s.pricePrecision,
-                    quantityPrecision: s.quantityPrecision
-                }))
+                .map(s => {
+                    const filters = s.filters.reduce(
+                        (acc, filter) => ({ ...acc, [filter.filterType]: filter }),
+                        {}
+                    );
+                    return {
+                        symbol: s.symbol,
+                        baseAsset: s.baseAsset,
+                        quoteAsset: s.quoteAsset,
+                        pricePrecision: s.pricePrecision,
+                        quantityPrecision: s.quantityPrecision,
+                        tickSize: Number(filters.PRICE_FILTER.tickSize),
+                        stepSize: Number(filters.LOT_SIZE.stepSize),
+                        filters
+                    };
+                })
                 .sort((a, b) => a.symbol.localeCompare(b.symbol));
             
             this.filteredSymbols = [...this.symbols];
@@ -184,20 +193,21 @@ class SymbolSelector {
             });
             
             option.addEventListener('click', () => {
-                this.selectSymbol(symbolData.symbol, selectButton);
+                const tickSize = Number(symbolData.filters.PRICE_FILTER.tickSize);
+                this.selectSymbol(symbolData.symbol, symbolData.pricePrecision, tickSize, selectButton);
             });
             
             optionsContainer.appendChild(option);
         });
     }
 
-    selectSymbol(symbol, selectButton) {
+    selectSymbol(symbol, pricePrecision, tickSize, selectButton) {
         selectButton.querySelector('span').textContent = symbol;
         this.selectElement.value = symbol;
         this.dropdownList.style.display = 'none';
         this.searchInput.value = '';
         this.filteredSymbols = [...this.symbols];
-        this.onSymbolChange(symbol);
+        this.onSymbolChange(symbol, pricePrecision, tickSize);
     }
 
     attachEventListeners() {
@@ -247,7 +257,7 @@ class SymbolSelector {
         // Keyboard navigation
         this.searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && this.filteredSymbols.length > 0) {
-                this.selectSymbol(this.filteredSymbols[0].symbol, this.selectButton);
+                this.selectSymbol(this.filteredSymbols[0].symbol, this.filteredSymbols[0].pricePrecision, this.selectButton);
             } else if (e.key === 'Escape') {
                 this.dropdownList.style.display = 'none';
                 this.searchInput.value = '';

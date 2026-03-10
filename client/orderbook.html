@@ -154,6 +154,7 @@
     <script>
         let eventSource = null;
         let currentSymbol = 'BTCUSDT';
+        let currentPricePrecision = 2;
 
         const statusEl = document.getElementById('status');
         const lastUpdateIdEl = document.getElementById('lastUpdateId');
@@ -162,13 +163,14 @@
         const bidsListEl = document.getElementById('bids-list');
         const currentSymbolEl = document.getElementById('currentSymbol');
 
-        function connectOrderBook(symbol) {
+        function connectOrderBook(symbol, pricePrecision) {
             // Close existing connection
             if (eventSource) {
                 eventSource.close();
             }
 
             currentSymbol = symbol;
+            currentPricePrecision = pricePrecision
             currentSymbolEl.textContent = symbol;
             statusEl.textContent = 'Connecting...';
             statusEl.className = 'status disconnected';
@@ -209,7 +211,7 @@
 
                     asksListEl.innerHTML = asks.map(([price, qty]) => `
                         <div class="row">
-                            <div class="price">${parseFloat(price).toFixed(2)}</div>
+                            <div class="price">${parseFloat(price).toFixed(currentPricePrecision)}</div>
                             <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
                         </div>
                     `).join('');
@@ -221,7 +223,7 @@
 
                     bidsListEl.innerHTML = bids.map(([price, qty]) => `
                         <div class="row">
-                            <div class="price">${parseFloat(price).toFixed(2)}</div>
+                            <div class="price">${parseFloat(price).toFixed(currentPricePrecision)}</div>
                             <div class="quantity">${parseFloat(qty).toFixed(4)}</div>
                         </div>
                     `).join('');
@@ -235,13 +237,13 @@
         // Initialize dynamic symbol selector
         const symbolSelector = new SymbolSelector('symbolSelect', {
             defaultSymbol: 'BTCUSDT',
-            onSymbolChange: (symbol) => {
-                connectOrderBook(symbol);
+            onSymbolChange: (symbol, pricePrecision, tickSize) => {
+                connectOrderBook(symbol, pricePrecision, tickSize);
             }
         });
 
         // Initial connection
-        connectOrderBook(currentSymbol);
+        connectOrderBook(currentSymbol, currentPricePrecision);
     </script>
 </body>
 </html>
