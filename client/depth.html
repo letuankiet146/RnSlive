@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depth Viewer</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .depth-page-container {
+            display: flex;
+            height: 100vh;
+            background: #0b1020;
+            color: #e0e0e0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .depth-config-panel {
+            width: 320px;
+            padding: 18px 18px 18px 22px;
+            border-right: 1px solid #181b2f;
+            background: radial-gradient(circle at top left, #1d2438 0, #111427 45%, #090d1a 100%);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .depth-config-panel h2 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #f5f5ff;
+        }
+        .depth-config-section {
+            margin-top: 4px;
+        }
+        .depth-config-section h3 {
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #8f9bbd;
+        }
+        .depth-config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 13px;
+        }
+        .depth-config-item label {
+            color: #9da7c8;
+        }
+        .depth-config-item span {
+            font-weight: 500;
+            color: #f1f3ff;
+        }
+        .depth-config-item span.depth-price-resistance {
+            color: #ff8a8a;
+        }
+        .depth-config-item span.depth-price-support {
+            color: #51cf66;
+        }
+        .tick-level-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 6px;
+        }
+        .tick-level-btn {
+            padding: 6px 0;
+            border-radius: 6px;
+            border: 1px solid #303652;
+            background: #15192b;
+            color: #c6d0ff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
+        }
+        .tick-level-btn:hover {
+            background: #222842;
+            border-color: #3d4670;
+        }
+        .tick-level-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #22c1c3);
+            border-color: #3b82f6;
+            color: white;
+        }
+        .depth-main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px 16px;
+        }
+        .depth-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .depth-header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #f5f5ff;
+        }
+        .depth-header-subtitle {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: #7f8ab0;
+        }
+        .depth-current-price-tag {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.6);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .depth-current-price-tag span {
+            color: #dbe4ff;
+        }
+        .depth-chart-shell {
+            position: relative;
+            flex: 1;
+            border-radius: 10px;
+            background: radial-gradient(circle at top, #15192b 0, #050814 60%, #050612 100%);
+            border: 1px solid #181c30;
+            overflow: hidden;
+        }
+        #depth-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .depth-axis-label {
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            font-size: 11px;
+            color: #7c86aa;
+        }
+        .depth-axis-label-x {
+            position: absolute;
+            right: 14px;
+            bottom: 10px;
+            font-size: 11px;
+            color: #7c86aa;
+        }
+        .depth-legend {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            color: #9aa4c7;
+        }
+        .depth-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .depth-legend-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+        .depth-legend-swatch.bid {
+            background: linear-gradient(90deg, rgba(81, 207, 102, 0.8), rgba(81, 207, 102, 0.3));
+        }
+        .depth-legend-swatch.ask {
+            background: linear-gradient(90deg, rgba(255, 107, 107, 0.8), rgba(255, 107, 107, 0.3));
+        }
+        .depth-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+<div class="depth-page-container">
+    <aside class="depth-config-panel">
+        <h2>Depth Control</h2>
+
+        <div class="depth-config-section">
+            <h3>Symbol</h3>
+            <select id="depth-symbol-select" style="width: 100%; padding: 8px; background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e; border-radius: 4px; cursor: pointer;">
+                <option value="BTCUSDT">BTCUSDT</option>
+            </select>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Orderbook Tick Group</h3>
+            <div class="tick-level-buttons" id="tick-level-buttons">
+                <button class="tick-level-btn active" data-level="1">x1</button>
+                <button class="tick-level-btn" data-level="2">x10</button>
+                <button class="tick-level-btn" data-level="3">x100</button>
+                <button class="tick-level-btn" data-level="4">x1K</button>
+                <button class="tick-level-btn" data-level="5">x10K</button>
+            </div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Price Band</h3>
+            <div class="depth-config-item">
+                <label>Resistance Price</label>
+                <span id="depth-resistance-price" class="depth-price-resistance">--</span>
+            </div>
+            <div class="depth-config-item">
+                <label>Last Price</label>
+                <span id="depth-last-price">--</span>
+            </div>
+            <div class="depth-config-item">
+                <label>Support Price</label>
+                <span id="depth-support-price" class="depth-price-support">--</span>
+            </div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Status</h3>
+            <div class="depth-config-item">
+                <label>Price Stream</label>
+                <span id="depth-price-status">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>Orderbook Stream</label>
+                <span id="depth-orderbook-status">Disconnected</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="depth-main-area">
+        <div class="depth-header">
+            <div>
+                <div class="depth-header-title">Orderbook Depth</div>
+                <div class="depth-header-subtitle">Per-symbol aggregated depth by price bucket</div>
+            </div>
+            <div class="depth-current-price-tag">
+                <span>Last Price</span>
+                <span id="depth-header-last-price">--</span>
+            </div>
+        </div>
+
+        <div class="depth-chart-shell">
+            <canvas id="depth-canvas"></canvas>
+            <div class="depth-axis-label">Qty</div>
+            <div class="depth-axis-label-x">Price</div>
+            <div class="depth-legend">
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch bid"></div>
+                    <span>Bids</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch ask"></div>
+                    <span>Asks</span>
+                </div>
+            </div>
+        </div>
+        <div class="depth-tooltip" id="depth-tooltip"></div>
+    </main>
+</div>
+
+<script src="symbol-selector.js"></script>
+<script>
+    const DEPTH_TICK_LEVEL_MULTIPLIERS = [1, 10, 100, 1000, 10000];
+
+    const depthState = {
+        symbol: 'BTCUSDT',
+        pricePrecision: 2,
+        baseTickSize: 0.5,
+        tickLevelIndex: 0,
+        currentPrice: null,
+        top: null,
+        bottom: null,
+        orderbook: { bids: {}, asks: {} },
+        priceEventSource: null,
+        orderbookEventSource: null,
+        viewHalfRange: null,
+        lastAggMinPrice: null,
+        lastAggMaxPrice: null,
+    };
+
+    let depthCanvas;
+    let depthCtx;
+    let depthBars = []; // for tooltip hit-testing
+
+    function getBucketSize() {
+        const multiplier = DEPTH_TICK_LEVEL_MULTIPLIERS[depthState.tickLevelIndex] || 1;
+        return depthState.baseTickSize * multiplier;
+    }
+
+    function aggregateDepth() {
+        const bucketSize = getBucketSize();
+        if (!bucketSize || !Number.isFinite(bucketSize)) {
+            return { bids: new Map(), asks: new Map(), minPrice: null, maxPrice: null };
+        }
+
+        const bidsAgg = new Map();
+        const asksAgg = new Map();
+        let minPrice = Number.POSITIVE_INFINITY;
+        let maxPrice = Number.NEGATIVE_INFINITY;
+
+        Object.entries(depthState.orderbook.bids || {}).forEach(([priceStr, qty]) => {
+            const price = parseFloat(priceStr);
+            if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
+            const bucketIndex = Math.floor(price / bucketSize);
+            const bucketPrice = bucketIndex * bucketSize;
+            bidsAgg.set(bucketPrice, (bidsAgg.get(bucketPrice) || 0) + qty);
+            minPrice = Math.min(minPrice, bucketPrice);
+            maxPrice = Math.max(maxPrice, bucketPrice);
+        });
+
+        Object.entries(depthState.orderbook.asks || {}).forEach(([priceStr, qty]) => {
+            const price = parseFloat(priceStr);
+            if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
+            const bucketIndex = Math.floor(price / bucketSize);
+            const bucketPrice = bucketIndex * bucketSize;
+            asksAgg.set(bucketPrice, (asksAgg.get(bucketPrice) || 0) + qty);
+            minPrice = Math.min(minPrice, bucketPrice);
+            maxPrice = Math.max(maxPrice, bucketPrice);
+        });
+
+        if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
+            depthState.lastAggMinPrice = null;
+            depthState.lastAggMaxPrice = null;
+            return { bids: bidsAgg, asks: asksAgg, minPrice: null, maxPrice: null };
+        }
+
+        depthState.lastAggMinPrice = minPrice;
+        depthState.lastAggMaxPrice = maxPrice;
+
+        return { bids: bidsAgg, asks: asksAgg, minPrice, maxPrice };
+    }
+
+    function resizeDepthCanvas() {
+        if (!depthCanvas) return;
+        const rect = depthCanvas.getBoundingClientRect();
+        depthCanvas.width = rect.width * window.devicePixelRatio;
+        depthCanvas.height = rect.height * window.devicePixelRatio;
+        if (depthCtx) {
+            depthCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+        }
+        drawDepthChart();
+    }
+
+    function drawDepthChart() {
+        if (!depthCtx || !depthCanvas) return;
+
+        const width = depthCanvas.clientWidth;
+        const height = depthCanvas.clientHeight;
+        if (!width || !height) return;
+
+        depthCtx.clearRect(0, 0, width, height);
+
+        const { bids, asks, minPrice, maxPrice } = aggregateDepth();
+        if (minPrice == null || maxPrice == null || depthState.currentPrice == null) {
+            return;
+        }
+
+        depthBars = [];
+
+        const paddingLeft = 40;
+        const paddingRight = 30;
+        const paddingTop = 24;
+        const paddingBottom = 30;
+
+        const plotWidth = width - paddingLeft - paddingRight;
+        const plotHeight = height - paddingTop - paddingBottom;
+        if (plotWidth <= 0 || plotHeight <= 0) return;
+        const fullRange = maxPrice - minPrice || 1;
+
+        // Keep current price centered: view range is symmetric around it
+        let halfRange = depthState.viewHalfRange;
+        if (!halfRange) {
+            halfRange = fullRange / 2 || (getBucketSize() * 50);
+            const minHalf = getBucketSize() * 5;
+            if (halfRange < minHalf) halfRange = minHalf;
+            depthState.viewHalfRange = halfRange;
+        }
+
+        const centerPrice = depthState.currentPrice;
+        let viewMin = centerPrice - halfRange;
+        let viewMax = centerPrice + halfRange;
+        if (viewMin === viewMax) {
+            viewMin -= getBucketSize() * 10;
+            viewMax += getBucketSize() * 10;
+        }
+        const priceRange = viewMax - viewMin || 1;
+
+        function xCoord(price) {
+            return paddingLeft + ((price - viewMin) / priceRange) * plotWidth;
+        }
+
+        // Vertical line at current price (always visually centered due to viewMin/viewMax)
+        const currentX = xCoord(centerPrice);
+        depthCtx.save();
+        depthCtx.strokeStyle = 'rgba(148, 163, 255, 0.5)';
+        depthCtx.setLineDash([4, 4]);
+        depthCtx.beginPath();
+        depthCtx.moveTo(currentX, paddingTop);
+        depthCtx.lineTo(currentX, paddingTop + plotHeight);
+        depthCtx.stroke();
+        depthCtx.restore();
+
+        const bucketSize = getBucketSize();
+        const halfBarWidth = Math.max(1, (bucketSize / priceRange) * plotWidth * 0.45);
+
+        // Prepare sorted buckets with cumulative quantity for tooltip,
+        // and also compute maxQty ONLY from currently visible buckets
+        const bidBuckets = Array.from(bids.entries())
+            .map(([price, qty]) => ({ price, qty }))
+            .filter(b => b.price <= centerPrice && b.price >= viewMin);
+        bidBuckets.sort((a, b) => b.price - a.price);
+        let runningBid = 0;
+        bidBuckets.forEach(b => {
+            runningBid += b.qty;
+            b.cumQty = runningBid;
+        });
+
+        const askBuckets = Array.from(asks.entries())
+            .map(([price, qty]) => ({ price, qty }))
+            .filter(a => a.price >= centerPrice && a.price <= viewMax);
+        askBuckets.sort((a, b) => a.price - b.price);
+        let runningAsk = 0;
+        askBuckets.forEach(a => {
+            runningAsk += a.qty;
+            a.cumQty = runningAsk;
+        });
+
+        if (bidBuckets.length === 0 && askBuckets.length === 0) {
+            return;
+        }
+
+        // Use cumulative quantities for scaling, to match depth behavior
+        const allVisibleQuantities = [
+            ...bidBuckets.map(b => b.cumQty),
+            ...askBuckets.map(a => a.cumQty),
+        ].filter(q => Number.isFinite(q) && q > 0);
+
+        if (allVisibleQuantities.length === 0) return;
+
+        const maxQty = Math.max(...allVisibleQuantities);
+
+        function barHeightForQty(qty) {
+            return (qty / maxQty) * plotHeight;
+        }
+
+        // Draw axes ticks (using maxQty from visible buckets)
+        depthCtx.save();
+        depthCtx.strokeStyle = 'rgba(50, 60, 100, 0.9)';
+        depthCtx.lineWidth = 1;
+        depthCtx.font = '10px system-ui';
+        depthCtx.fillStyle = '#7c86aa';
+
+        // Y-axis (quantity)
+        const yTicks = 4;
+        for (let i = 0; i <= yTicks; i++) {
+            const t = i / yTicks;
+            const y = paddingTop + plotHeight - t * plotHeight;
+            const qty = t * maxQty;
+            depthCtx.globalAlpha = 0.3;
+            depthCtx.beginPath();
+            depthCtx.moveTo(paddingLeft, y);
+            depthCtx.lineTo(paddingLeft + plotWidth, y);
+            depthCtx.stroke();
+            depthCtx.globalAlpha = 1;
+            depthCtx.fillText(qty.toFixed(2), 4, y + 3);
+        }
+
+        // X-axis (price)
+        const xTicks = 6;
+        for (let i = 0; i <= xTicks; i++) {
+            const t = i / xTicks;
+            const price = viewMin + t * priceRange;
+            const x = paddingLeft + t * plotWidth;
+            depthCtx.globalAlpha = 0.18;
+            depthCtx.beginPath();
+            depthCtx.moveTo(x, paddingTop);
+            depthCtx.lineTo(x, paddingTop + plotHeight);
+            depthCtx.stroke();
+            depthCtx.globalAlpha = 1;
+            const label = price.toFixed(depthState.pricePrecision);
+            const textWidth = depthCtx.measureText(label).width;
+            depthCtx.fillText(label, x - textWidth / 2, height - 6);
+        }
+        depthCtx.restore();
+
+        function drawBuckets(bucketArray, colorStart, colorEnd, side) {
+            depthCtx.save();
+            const gradientHeight = plotHeight;
+            bucketArray.forEach(bucket => {
+                const bucketPrice = bucket.price;
+                const cumQty = bucket.cumQty;
+                if (!Number.isFinite(bucketPrice) || !Number.isFinite(cumQty) || cumQty <= 0) return;
+                const bucketX = xCoord(bucketPrice);
+
+                const barHeight = barHeightForQty(cumQty);
+                const x = bucketX - halfBarWidth;
+                const y = paddingTop + (plotHeight - barHeight);
+
+                const gradient = depthCtx.createLinearGradient(
+                    x,
+                    paddingTop,
+                    x + halfBarWidth * 2,
+                    paddingTop + gradientHeight
+                );
+                gradient.addColorStop(0, colorStart);
+                gradient.addColorStop(1, colorEnd);
+
+                depthCtx.fillStyle = gradient;
+                depthCtx.fillRect(x, y, halfBarWidth * 2, barHeight);
+
+                depthBars.push({
+                    x,
+                    y,
+                    width: halfBarWidth * 2,
+                    height: barHeight,
+                    price: bucketPrice,
+                    cumQty: bucket.cumQty,
+                    side,
+                });
+            });
+            depthCtx.restore();
+        }
+
+        drawBuckets(bidBuckets,
+            'rgba(81, 207, 102, 0.85)',
+            'rgba(81, 207, 102, 0.25)',
+            'bid'
+        );
+        drawBuckets(askBuckets,
+            'rgba(255, 107, 107, 0.9)',
+            'rgba(255, 107, 107, 0.28)',
+            'ask'
+        );
+    }
+
+    function connectDepthPriceSSE() {
+        if (depthState.priceEventSource) {
+            depthState.priceEventSource.close();
+            depthState.priceEventSource = null;
+        }
+
+        const statusEl = document.getElementById('depth-price-status');
+
+        const url = `http://localhost:8080/binance/stream/prices?symbol=${depthState.symbol}`;
+        const es = new EventSource(url);
+        depthState.priceEventSource = es;
+
+        es.onopen = () => {
+            if (statusEl) statusEl.textContent = 'Connected';
+            if (statusEl) statusEl.style.color = '#26a69a';
+        };
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleDepthPriceUpdate(data);
+            } catch (e) {
+                console.error('Depth price SSE parse error', e);
+            }
+        };
+
+        es.onerror = () => {
+            if (statusEl) statusEl.textContent = 'Disconnected';
+            if (statusEl) statusEl.style.color = '#ef5350';
+            es.close();
+            setTimeout(connectDepthPriceSSE, 5000);
+        };
+    }
+
+    function connectDepthOrderbookSSE() {
+        if (depthState.orderbookEventSource) {
+            depthState.orderbookEventSource.close();
+            depthState.orderbookEventSource = null;
+        }
+
+        const statusEl = document.getElementById('depth-orderbook-status');
+
+        const url = `http://localhost:8080/binance/stream/orderbook?symbol=${depthState.symbol}`;
+        const es = new EventSource(url);
+        depthState.orderbookEventSource = es;
+
+        es.onopen = () => {
+            if (statusEl) statusEl.textContent = 'Connected';
+            if (statusEl) statusEl.style.color = '#26a69a';
+        };
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleDepthOrderbookUpdate(data);
+            } catch (e) {
+                console.error('Depth orderbook SSE parse error', e);
+            }
+        };
+
+        es.onerror = () => {
+            if (statusEl) statusEl.textContent = 'Disconnected';
+            if (statusEl) statusEl.style.color = '#ef5350';
+            es.close();
+            setTimeout(connectDepthOrderbookSSE, 5000);
+        };
+    }
+
+    function handleDepthPriceUpdate(data) {
+        if (!data || typeof data.middle === 'undefined') return;
+
+        depthState.currentPrice = data.middle;
+        depthState.top = data.top;
+        depthState.bottom = data.bottom;
+
+        const p = depthState.pricePrecision;
+        const resistanceEl = document.getElementById('depth-resistance-price');
+        const lastPriceEl = document.getElementById('depth-last-price');
+        const supportEl = document.getElementById('depth-support-price');
+        const headerPriceEl = document.getElementById('depth-header-last-price');
+
+        const topStr = Number.isFinite(data.top) ? data.top.toFixed(p) : '--';
+        const midStr = Number.isFinite(data.middle) ? data.middle.toFixed(p) : '--';
+        const bottomStr = Number.isFinite(data.bottom) ? data.bottom.toFixed(p) : '--';
+
+        if (resistanceEl) resistanceEl.textContent = topStr === '--' ? '--' : `$${topStr}`;
+        if (lastPriceEl) lastPriceEl.textContent = midStr === '--' ? '--' : `$${midStr}`;
+        if (supportEl) supportEl.textContent = bottomStr === '--' ? '--' : `$${bottomStr}`;
+        if (headerPriceEl) headerPriceEl.textContent = midStr === '--' ? '--' : `$${midStr}`;
+
+        drawDepthChart();
+    }
+
+    function handleDepthOrderbookUpdate(data) {
+        if (!data || !data.bids || !data.asks) {
+            return;
+        }
+        depthState.orderbook = {
+            bids: data.bids,
+            asks: data.asks,
+        };
+        drawDepthChart();
+    }
+
+    function handleTickLevelClick(level) {
+        const index = Math.max(0, Math.min(DEPTH_TICK_LEVEL_MULTIPLIERS.length - 1, level - 1));
+        depthState.tickLevelIndex = index;
+
+        const buttons = document.querySelectorAll('.tick-level-btn');
+        buttons.forEach(btn => {
+            const lvl = parseInt(btn.dataset.level, 10);
+            if (lvl === level) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        drawDepthChart();
+    }
+
+    function handleDepthWheel(event) {
+        if (!depthState.currentPrice || depthState.lastAggMinPrice == null) {
+            return;
+        }
+        event.preventDefault();
+        const zoomIn = event.deltaY < 0;
+        const factor = zoomIn ? 0.8 : 1.25;
+
+        const fullRange = (depthState.lastAggMaxPrice - depthState.lastAggMinPrice) || (getBucketSize() * 200);
+        let halfRange = depthState.viewHalfRange || (fullRange / 2);
+        halfRange *= factor;
+
+        const minHalf = getBucketSize() * 5;
+        const maxHalf = fullRange / 2;
+
+        if (halfRange < minHalf) halfRange = minHalf;
+        if (maxHalf && halfRange > maxHalf) halfRange = maxHalf;
+
+        depthState.viewHalfRange = halfRange;
+        drawDepthChart();
+    }
+
+    function handleDepthTooltip(event) {
+        const tooltip = document.getElementById('depth-tooltip');
+        if (!tooltip || !depthCanvas || depthBars.length === 0) return;
+
+        const rect = depthCanvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        let hovered = null;
+        for (let i = 0; i < depthBars.length; i++) {
+            const b = depthBars[i];
+            if (x >= b.x && x <= b.x + b.width &&
+                y >= b.y && y <= b.y + b.height) {
+                hovered = b;
+                break;
+            }
+        }
+
+        if (!hovered) {
+            tooltip.style.display = 'none';
+            return;
+        }
+
+        const priceStr = hovered.price.toFixed(depthState.pricePrecision);
+        const cumStr = hovered.cumQty.toFixed(4);
+        const sideLabel = hovered.side === 'bid' ? 'Bid' : 'Ask';
+
+        tooltip.innerHTML = `
+            <div><strong>${sideLabel}</strong></div>
+            <div>Price: $${priceStr}</div>
+            <div>Cumulative: ${cumStr}</div>
+        `;
+        tooltip.style.display = 'block';
+
+        // Position tooltip above the cursor
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const offsetX = 12;
+        const offsetY = 12;
+
+        const top = event.clientY - tooltipRect.height - offsetY;
+        tooltip.style.left = `${event.clientX + offsetX}px`;
+        tooltip.style.top = `${top}px`;
+    }
+
+    function updateDepthSymbol(symbol, pricePrecision, tickSize) {
+        depthState.symbol = symbol;
+        depthState.pricePrecision = pricePrecision;
+        depthState.baseTickSize = tickSize;
+        depthState.currentPrice = null;
+        depthState.orderbook = { bids: {}, asks: {} };
+
+        connectDepthPriceSSE();
+        connectDepthOrderbookSSE();
+    }
+
+    function initDepthPage() {
+        depthCanvas = document.getElementById('depth-canvas');
+        if (!depthCanvas) {
+            console.error('Depth canvas not found');
+            return;
+        }
+        depthCtx = depthCanvas.getContext('2d');
+        resizeDepthCanvas();
+
+        window.addEventListener('resize', resizeDepthCanvas);
+
+        depthCanvas.addEventListener('wheel', handleDepthWheel, { passive: false });
+        depthCanvas.addEventListener('mousemove', handleDepthTooltip);
+        depthCanvas.addEventListener('mouseleave', () => {
+            const tooltip = document.getElementById('depth-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+        });
+
+        const tickButtonsContainer = document.getElementById('tick-level-buttons');
+        if (tickButtonsContainer) {
+            tickButtonsContainer.querySelectorAll('.tick-level-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const level = parseInt(btn.dataset.level, 10);
+                    handleTickLevelClick(level);
+                });
+            });
+        }
+
+        const symbolSelector = new SymbolSelector('depth-symbol-select', {
+            defaultSymbol: depthState.symbol,
+            onSymbolChange: (symbol, pricePrecision, tickSize) => {
+                updateDepthSymbol(symbol, pricePrecision, tickSize);
+            }
+        });
+
+        setTimeout(() => {
+            const initialSymbol = symbolSelector.getSelectedSymbol();
+            const all = symbolSelector.getAllSymbols();
+            const found = all.find(s => s.symbol === initialSymbol);
+            if (found) {
+                depthState.pricePrecision = found.pricePrecision;
+                depthState.baseTickSize = Number(found.filters.PRICE_FILTER.tickSize);
+            }
+            connectDepthPriceSSE();
+            connectDepthOrderbookSSE();
+        }, 0);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDepthPage);
+    } else {
+        initDepthPage();
+    }
+</script>
+</body>
+</html>
+
