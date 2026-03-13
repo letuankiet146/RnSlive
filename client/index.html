@@ -396,7 +396,6 @@
 
             const chartContainer = document.getElementById('chart');
             const chartWidth = chartContainer.clientWidth;
-            const overlayHeight = depthOverlay.clientHeight || chartContainer.clientHeight;
 
             const visibleRange = chart.timeScale().getVisibleLogicalRange();
             if (!visibleRange) return;
@@ -440,7 +439,6 @@
             cumulativeBids.forEach(bid => {
                 const yCoord = candleSeries.priceToCoordinate(bid.price);
                 if (yCoord === null || yCoord === undefined) return;
-                if (yCoord < 0 || yCoord > overlayHeight) return;
 
                 const barWidth = (bid.cumQuantity / maxQuantity) * maxBarWidth;
 
@@ -459,7 +457,6 @@
             cumulativeAsks.forEach(ask => {
                 const yCoord = candleSeries.priceToCoordinate(ask.price);
                 if (yCoord === null || yCoord === undefined) return;
-                if (yCoord < 0 || yCoord > overlayHeight) return;
 
                 const barWidth = (ask.cumQuantity / maxQuantity) * maxBarWidth;
 

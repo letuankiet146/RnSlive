@@ -35,6 +35,10 @@ public class OKXService {
             });
     }
 
+    public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
+        exFutureClient.subscribeDepth(symbol, interval, callback);
+    }
+
     public void subscribeMarkPrice(String symbol, Consumer<String> callback) {
         exFutureClient.subscribeMarkPrice(symbol, null, callback);
     }

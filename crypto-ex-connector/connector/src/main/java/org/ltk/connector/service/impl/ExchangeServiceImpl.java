@@ -267,8 +267,8 @@ public class ExchangeServiceImpl implements ExchangeService {
             case BINANCE:
                 binanceService.subscribeDepth(symbol, interval, callback);
                 break;
-            case BYBIT:
-                bybitService.subscribeDepth(symbol, interval, callback);
+            case OKX:
+                okxService.subscribeDepth(symbol, interval, callback);
                 break;
             default:
                 throw new RuntimeException("Exchange not supported: " + exchangeName);

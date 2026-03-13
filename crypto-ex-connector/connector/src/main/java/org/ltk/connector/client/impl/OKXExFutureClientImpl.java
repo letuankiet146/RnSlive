@@ -38,8 +38,20 @@ public class OKXExFutureClientImpl implements ExFutureClient {
     }
 
     @Override
+    public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
+        // Default to books5 (top 5 levels) if no specific channel is provided.
+        // If interval is provided, treat it as the desired OKX order book channel name
+        // (e.g. "books", "books5", "bbo-tbt", "books-l2-tbt", "books50-l2-tbt").
+        String channel = (interval == null || interval.isBlank()) ? "books5" : interval;
+        String instId = symbol.toUpperCase();
+        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, channel, instId);
+        webSocket.subscribe(subscribeMsg, callback);
+    }
+
+    @Override
     public void subscribeMarkPrice(String symbol, String interval, Consumer<String> callback) {
-        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, "mark-price", symbol);
+        String instId = symbol.toUpperCase();
+        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, "mark-price", instId);
         webSocket.subscribe(subscribeMsg, callback);
     }
 }
