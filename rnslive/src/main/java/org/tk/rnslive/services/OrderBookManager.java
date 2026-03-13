@@ -45,20 +45,6 @@ public class OrderBookManager {
     }
     
     /**
-     * Get orderbook snapshot for a symbol
-     */
-    public Mono<OrderBook> snapshotOrderBook(String symbol) {
-        return getOrCreateOrderBook(symbol).snapshotOrderBook();
-    }
-    
-    /**
-     * Get depth snapshot for a symbol
-     */
-    public Mono<Depth> getSnapshotDepth(String symbol) {
-        return exchangeService.getDepth(ExchangeName.BINANCE, symbol, 1000);
-    }
-    
-    /**
      * Get or create orderbook instance for symbol (thread-safe)
      */
     private SingleOrderBookService getOrCreateOrderBook(String symbol) {
@@ -73,17 +59,6 @@ public class OrderBookManager {
             orderBook.start();
             return orderBook;
         });
-    }
-    
-    /**
-     * Manually stop and remove orderbook for a symbol
-     */
-    public void stopOrderBook(String symbol) {
-        SingleOrderBookService orderBook = orderBooks.remove(symbol);
-        if (orderBook != null) {
-            orderBook.stop();
-            LOGGER.info("Stopped orderbook for symbol: {}", symbol);
-        }
     }
     
     /**

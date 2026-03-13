@@ -25,16 +25,6 @@ public class OrderBookController {
         return orderBookManager.getOrderBookStream(symbol);
     }
 
-    @GetMapping(value = "/binance/snapshot/depth", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Depth> getSnapshotDepth(@RequestParam(defaultValue = "BTCUSDT") String symbol) {
-        return orderBookManager.getSnapshotDepth(symbol);
-    }
-
-    @GetMapping(value = "/binance/snapshot/orderbook", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<OrderBook> snapshotOrderBook(@RequestParam(defaultValue = "BTCUSDT") String symbol) {
-        return orderBookManager.snapshotOrderBook(symbol);
-    }
-
     @GetMapping(value = "/binance/orderbook/stats", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> getOrderBookStats() {
         return orderBookManager.getStats();

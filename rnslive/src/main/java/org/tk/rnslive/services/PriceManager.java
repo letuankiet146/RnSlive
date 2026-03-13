@@ -71,17 +71,6 @@ public class PriceManager {
     }
     
     /**
-     * Manually stop and remove price stream for a symbol
-     */
-    public void stopPriceStream(String symbol) {
-        SinglePriceService priceService = priceStreams.remove(symbol);
-        if (priceService != null) {
-            priceService.stop();
-            LOGGER.info("Stopped price stream for symbol: {}", symbol);
-        }
-    }
-    
-    /**
      * Cleanup inactive price streams to free memory
      */
     private void cleanupInactivePriceStreams() {
