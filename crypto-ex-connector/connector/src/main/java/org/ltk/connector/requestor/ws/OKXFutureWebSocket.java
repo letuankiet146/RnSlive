@@ -9,12 +9,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.Timer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static org.ltk.connector.client.RESTApiUrl.OKX_BASE_WEBSOCKET_URI;
@@ -22,7 +24,7 @@ import static org.ltk.connector.client.RESTApiUrl.OKX_BASE_WEBSOCKET_URI;
 @Component
 public class OKXFutureWebSocket {
     private static final Logger LOGGER = LoggerFactory.getLogger(OKXFutureWebSocket.class);
-    private static final int RECONNECT_DELAY_SECONDS = 5;
+    private static final int RECONNECT_DELAY_SECONDS = 2;
 
     private String LISTEN_KEY;
 
@@ -34,65 +36,123 @@ public class OKXFutureWebSocket {
 
     private final ReactorNettyWebSocketClient webSocketClient = new ReactorNettyWebSocketClient();
 
-    public void subscribe(String subscribeMessage, Consumer<String> callback) {
-        LOGGER.info("Subscribing to account data: {}", OKX_BASE_WEBSOCKET_URI);
-        subscribe(OKX_BASE_WEBSOCKET_URI, subscribeMessage, callback);
+    /** Per-key subscription state for manual disconnect and reconnect. */
+    private final ConcurrentHashMap<String, SubscriptionHandle> subscriptions = new ConcurrentHashMap<>();
+
+    /**
+     * Subscription handle holding connection disposable and params for reconnect.
+     */
+    private static final class SubscriptionHandle {
+        final String uri;
+        final String subscribeMessage;
+        final Consumer<String> callback;
+        volatile Disposable disposable;
+
+        SubscriptionHandle(String uri, String subscribeMessage, Consumer<String> callback) {
+            this.uri = uri;
+            this.subscribeMessage = subscribeMessage;
+            this.callback = callback;
+        }
+
+        void dispose() {
+            if (disposable != null) {
+                disposable.dispose();
+                disposable = null;
+            }
+        }
     }
 
-    public void subscribe(String uri, String subscribeMessage, Consumer<String> callback) {
+    public void subscribe(String subscribeMessage, Consumer<String> callback) {
+        LOGGER.info("Subscribing to account data: {}", OKX_BASE_WEBSOCKET_URI);
+        subscribe(null, OKX_BASE_WEBSOCKET_URI, subscribeMessage, callback);
+    }
+
+    /** Subscribes with a key so this subscription can be disconnected manually via {@link #disconnect(String)}. */
+    public void subscribe(String key, String subscribeMessage, Consumer<String> callback) {
+        subscribe(key, OKX_BASE_WEBSOCKET_URI, subscribeMessage, callback);
+    }
+
+    /**
+     * Subscribe to OKX WebSocket. If {@code key} is non-null, the subscription can be interrupted
+     * with {@link #disconnect(String)}; on session end (or after disconnect) it will reconnect automatically.
+     */
+    public void subscribe(String key, String uri, String subscribeMessage, Consumer<String> callback) {
+        String k = (key != null && !key.isEmpty()) ? key : ("_default_" + System.identityHashCode(callback));
+        SubscriptionHandle handle = new SubscriptionHandle(uri, subscribeMessage, callback);
+        subscriptions.put(k, handle);
+
         LOGGER.info("Subscribing to: {} with message {}", uri, subscribeMessage);
-        webSocketClient.execute(
+        Disposable d = webSocketClient.execute(
                 URI.create(uri),
                 session -> {
-                    // 2. Receive and process incoming messages
                     Flux<String> receiveMessages = session.receive()
                             .map(WebSocketMessage::getPayloadAsText)
-                            .doOnNext(message -> {
-                                callback.accept(message);
-                            })
+                            .doOnNext(callback::accept)
                             .doOnError(this::errorConsume)
                             .doOnComplete(this::completion);
-                    ;
 
-                    if (StringUtils.hasText(subscribeMessage)){
+                    if (StringUtils.hasText(subscribeMessage)) {
                         Mono<WebSocketMessage> subscriptionMessage = Mono.just(
                                 session.textMessage(subscribeMessage)
                         );
                         return session
                                 .send(subscriptionMessage)
                                 .thenMany(receiveMessages)
-                                .doOnTerminate(onTerminate(uri, subscribeMessage, callback))
+                                .doOnTerminate(onTerminate(k))
                                 .then();
                     } else {
                         return receiveMessages
-                                .doOnTerminate(onTerminate(uri, null, callback)).then();
+                                .doOnTerminate(onTerminate(k))
+                                .then();
                     }
                 }
         ).subscribe();
+        handle.disposable = d;
     }
 
-    private Runnable onTerminate(String uri, String subscribeMessage, Consumer<String> callback) {
+    private Runnable onTerminate(String key) {
         return () -> {
-            LOGGER.info("WebSocket session terminated.");
-            reconnect(uri, subscribeMessage, callback);
+            LOGGER.info("WebSocket session terminated for key: {}", key);
+            reconnect(key);
         };
     }
 
-    // Handle reconnection logic with exponential backoff or fixed delay
-    private void reconnect(String uri, String subscribeMessage, Consumer<String> callback) {
-        LOGGER.info("Attempting to reconnect in {} seconds...", RECONNECT_DELAY_SECONDS);
+    private void reconnect(String key) {
+        SubscriptionHandle handle = subscriptions.get(key);
+        if (handle == null) {
+            return;
+        }
+        LOGGER.info("Attempting to reconnect in {} seconds for key: {}...", RECONNECT_DELAY_SECONDS, key);
         Mono.delay(Duration.ofSeconds(RECONNECT_DELAY_SECONDS))
-                .doOnTerminate(()->{
-                    LOGGER.info("Reconnecting...");
-                    subscribe(uri, subscribeMessage, callback);
+                .doOnTerminate(() -> {
+                    if (subscriptions.containsKey(key)) {
+                        LOGGER.info("Reconnecting for key: {}", key);
+                        subscribe(key, handle.uri, handle.subscribeMessage, handle.callback);
+                    }
                 })
                 .subscribe();
     }
 
+    /**
+     * Manually interrupt the WebSocket connection for the given key. The connector will
+     * reconnect after a short delay and resubscribe, so a fresh snapshot will be received (e.g. for OKX books).
+     */
+    public void disconnect(String key) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        SubscriptionHandle handle = subscriptions.get(key);
+        if (handle != null) {
+            LOGGER.info("Manually disconnecting WebSocket for key: {}", key);
+            handle.dispose();
+        }
+    }
 
-    // To stop the WebSocket client and clean up resources
+    /** Stop the WebSocket client and clean up resources. */
     public void stopWebSocketClient() {
         LOGGER.info("Stopping WebSocket client...");
+        subscriptions.values().forEach(SubscriptionHandle::dispose);
+        subscriptions.clear();
     }
 
     private void errorConsume(Throwable error) {

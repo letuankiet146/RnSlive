@@ -54,13 +54,20 @@ public class OKXExFutureClientImpl implements ExFutureClient {
         String channel = (interval == null || interval.isBlank()) ? "books" : interval;
         String instId = symbol.toUpperCase();
         String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, channel, instId);
-        webSocket.subscribe(subscribeMsg, callback);
+        webSocket.subscribe(channel, subscribeMsg, callback);
+    }
+
+    @Override
+    public void disconnectDepth(String symbol) {
+        if (symbol == null) return;
+        webSocket.disconnect(symbol.toUpperCase());
     }
 
     @Override
     public void subscribeMarkPrice(String symbol, String interval, Consumer<String> callback) {
         String instId = symbol.toUpperCase();
-        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, "mark-price", instId);
-        webSocket.subscribe(subscribeMsg, callback);
+        String channel = "mark-price";
+        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, channel, instId);
+        webSocket.subscribe(channel, subscribeMsg, callback);
     }
 }

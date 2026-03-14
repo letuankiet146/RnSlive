@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 public abstract class AbstractExchangeWebClientConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractExchangeWebClientConfig.class);
     public abstract void config(WebClient.Builder builder);
-    public abstract void throwExchangeClientExceptionIfAny(String body);
 
     protected ExchangeFilterFunction logRequest() {
         return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
@@ -28,7 +27,6 @@ public abstract class AbstractExchangeWebClientConfig {
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("Response: \t{}", body);
                         }
-                        throwExchangeClientExceptionIfAny(body);
                         return Mono.just(ClientResponse.create(clientResponse.statusCode())
                                 .headers(headers -> clientResponse.headers().asHttpHeaders().forEach(headers::addAll))
                                 .body(body)

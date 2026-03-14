@@ -16,6 +16,7 @@ import org.ltk.connector.utils.SecurityHelper;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -34,6 +35,7 @@ public class SingleOrderBookService {
     private final Sinks.Many<OrderBook> orderBookSink;
     private final ConcurrentLinkedQueue<DepthUpdate> updateBuffer;
     private final AtomicLong lastAccessTime;
+    private AtomicBoolean forceRemove = new AtomicBoolean(false);
     
     // Orderbook data
     private long lastUpdateId;
@@ -114,6 +116,10 @@ public class SingleOrderBookService {
         return lastAccessTime.get();
     }
 
+    public boolean isForceRemove() {
+        return forceRemove.get();
+    }
+
     private void updateLastAccessTime() {
         lastAccessTime.set(System.currentTimeMillis());
     }
@@ -177,7 +183,10 @@ public class SingleOrderBookService {
                             LOGGER.error("Error processing depth snapshot for {}", symbol, e);
                         }
                     },
-                    error -> LOGGER.error("Error fetching depth snapshot for {}", symbol, error)
+                    error -> {
+                        LOGGER.error("Error fetching depth snapshot for {}", symbol, error);
+                        forceRemove.set(true);
+                    }
                 );
         } else {
             LOGGER.info("Skipping REST depth initialization for {} on exchange {}", symbol, exchangeName);
@@ -301,9 +310,13 @@ public class SingleOrderBookService {
 
         if (exchangeName == ExchangeName.BINANCE) {
             initializeOrderBook();
+        } else if (exchangeName == ExchangeName.OKX) {
+            // OKX does not send a new snapshot on the same connection. Force disconnect so the
+            // connector reconnects and resubscribes; the new connection will send a fresh snapshot.
+            LOGGER.info("Disconnecting OKX depth WS for {} to force reconnect and fresh snapshot", symbol);
+            exchangeService.disconnectDepth(exchangeName, symbol);
         } else {
-            // For OKX we rely on the next WebSocket `snapshot` message from the `books` channel
-            LOGGER.info("Waiting for next OKX WS snapshot to reinitialize orderbook for {}", symbol);
+            LOGGER.info("Waiting for next WS snapshot to reinitialize orderbook for {}", symbol);
         }
     }
 

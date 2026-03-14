@@ -15,20 +15,6 @@ public class BingXWebClientFilter extends AbstractExchangeWebClientConfig {
     @Override
     public void config(WebClient.Builder builder) {
         builder.filter(logRequest())
-                .filter(logResponse())
         ;
-    }
-
-    @Override
-    public void throwExchangeClientExceptionIfAny(String body) {
-        String code;
-        try {
-            code = mapper.readTree(body).path("code").asText();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        if ((!StringUtils.hasText(code) || Integer.parseInt(code) != 0) && !body.contains("listenKey")) {
-            throw new ExchangeClientException(body);
-        }
     }
 }

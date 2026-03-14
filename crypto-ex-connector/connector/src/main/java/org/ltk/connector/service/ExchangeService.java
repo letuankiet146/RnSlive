@@ -32,6 +32,12 @@ public interface ExchangeService {
     Mono<List<Kline>> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit);
     void subscribeMarkPrice(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeDepth(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
+
+    /**
+     * Manually interrupt the depth WebSocket for the given symbol so it reconnects and sends a fresh snapshot.
+     * Supported for OKX (e.g. after checksum mismatch). No-op for other exchanges.
+     */
+    void disconnectDepth(ExchangeName exchangeName, String symbol);
     void subscribeTradeDetail(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);
     void subscribeAccountData(ExchangeName exchangeName, Consumer<String> callback);
     void subscribeForceOrder(ExchangeName exchangeName, String symbol, Consumer<String> callback);

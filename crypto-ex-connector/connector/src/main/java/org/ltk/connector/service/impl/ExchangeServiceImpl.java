@@ -292,6 +292,18 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
+    public void disconnectDepth(ExchangeName exchangeName, String symbol) {
+        switch (exchangeName) {
+            case OKX:
+                okxService.disconnectDepth(symbol);
+                break;
+            default:
+                // no-op for exchanges that do not support manual disconnect
+                break;
+        }
+    }
+
+    @Override
     public void subscribeTradeDetail(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback) {
         switch (exchangeName) {
             case BINGX:

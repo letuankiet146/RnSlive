@@ -34,7 +34,7 @@ public class BinaneFutureRequesterTest {
 
     @Test
     public void testExpectedException() {
-        Assertions.assertThrows(ExchangeClientException.class, () -> {
+        Assertions.assertThrows(org.springframework.web.reactive.function.client.WebClientResponseException.BadRequest.class, () -> {
             LinkedHashMap<String, Object> params = new LinkedHashMap<>();
             params.put("symbol", "abc");
             params.put("limit", 500);

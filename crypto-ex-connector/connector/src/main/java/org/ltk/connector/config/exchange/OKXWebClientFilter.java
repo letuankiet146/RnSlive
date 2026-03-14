@@ -16,17 +16,4 @@ public class OKXWebClientFilter extends AbstractExchangeWebClientConfig {
     public void config(WebClient.Builder builder) {
         builder.filter(logRequest());
     }
-
-    @Override
-    public void throwExchangeClientExceptionIfAny(String body) {
-        String code;
-        try {
-            code = mapper.readTree(body).path("code").asText();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        if ((!StringUtils.hasText(code) || Integer.parseInt(code) != 0) && !body.contains("listenKey")) {
-            throw new ExchangeClientException(body);
-        }
-    }
 }

@@ -69,10 +69,10 @@ public class OrderBookManager {
     /**
      * Cleanup inactive orderbooks to free memory
      */
-    private void cleanupInactiveOrderBooks() {
+    public void cleanupInactiveOrderBooks() {
         long now = System.currentTimeMillis();
         orderBooks.entrySet().removeIf(entry -> {
-            if (now - entry.getValue().getLastAccessTime() > INACTIVE_TIMEOUT_MS) {
+            if (entry.getValue().isForceRemove() || ( now - entry.getValue().getLastAccessTime() > INACTIVE_TIMEOUT_MS)) {
                 LOGGER.info("Cleaning up inactive orderbook: {}", entry.getKey());
                 entry.getValue().stop();
                 return true;

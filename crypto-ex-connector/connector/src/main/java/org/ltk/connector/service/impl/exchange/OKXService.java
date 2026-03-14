@@ -43,6 +43,10 @@ public class OKXService {
         exFutureClient.subscribeDepth(symbol, interval, callback);
     }
 
+    public void disconnectDepth(String symbol) {
+        exFutureClient.disconnectDepth(symbol);
+    }
+
     public void subscribeMarkPrice(String symbol, Consumer<String> callback) {
         exFutureClient.subscribeMarkPrice(symbol, null, callback);
     }

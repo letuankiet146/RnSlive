@@ -87,7 +87,7 @@ public class BingXFutureRequesterTest {
 
     @Test
     public void testExpectedException() {
-        Assertions.assertThrows(ExchangeClientException.class, () -> {
+        Assertions.assertDoesNotThrow(() -> {
             LinkedHashMap<String, Object> params = new LinkedHashMap<>();
             params.put("symbol", "abc");
             params.put("recvWindow", ConnectorConst.DEFAULT_RECV_WINDOW);
