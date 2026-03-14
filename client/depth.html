@@ -14,15 +14,85 @@
             color: #e0e0e0;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
+        .depth-panel-wrapper {
+            display: flex;
+            flex-shrink: 0;
+            position: relative;
+        }
         .depth-config-panel {
             width: 320px;
-            padding: 18px 18px 18px 22px;
+            min-width: 320px;
+            padding: 18px 48px 18px 22px;
             border-right: 1px solid #181b2f;
             background: radial-gradient(circle at top left, #1d2438 0, #111427 45%, #090d1a 100%);
             box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
             display: flex;
             flex-direction: column;
             gap: 18px;
+            transition: width 0.22s ease, min-width 0.22s ease, padding 0.22s ease, border-color 0.22s ease, opacity 0.15s ease, visibility 0.15s ease;
+            overflow: hidden;
+        }
+        .depth-panel-wrapper.collapsed .depth-config-panel {
+            width: 0;
+            min-width: 0;
+            padding-left: 0;
+            padding-right: 0;
+            border-right-width: 0;
+            visibility: hidden;
+            opacity: 0;
+            background: transparent;
+            box-shadow: none;
+            transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease, border-color 0.2s ease, opacity 0.12s ease, visibility 0.12s ease;
+        }
+        .depth-panel-wrapper.collapsed {
+            min-width: 0;
+            width: 0;
+            overflow: visible;
+        }
+        .depth-panel-wrapper.collapsed .depth-panel-toggle {
+            right: auto;
+            left: 0;
+            transform: translateY(-50%);
+        }
+        .depth-panel-toggle {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -50%);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #3d4670;
+            background: linear-gradient(180deg, #1d2438 0, #111427 100%);
+            cursor: pointer;
+            color: #8f9bbd;
+            font-size: 14px;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            z-index: 1;
+        }
+        .depth-panel-toggle:hover {
+            background: #222842;
+            color: #c6d0ff;
+            border-color: #5a6a9a;
+        }
+        .depth-panel-toggle .depth-panel-toggle-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            width: 1em;
+            height: 1em;
+            transition: transform 0.2s ease;
+            transform-origin: center center;
+        }
+        .depth-panel-wrapper:not(.collapsed) .depth-panel-toggle .depth-panel-toggle-icon {
+            transform: rotate(0deg);
+        }
+        .depth-panel-wrapper.collapsed .depth-panel-toggle .depth-panel-toggle-icon {
+            transform: rotate(180deg);
         }
         .depth-config-panel h2 {
             margin: 0;
@@ -85,6 +155,74 @@
             border-color: #3b82f6;
             color: white;
         }
+        .depth-base-select-wrapper {
+            position: relative;
+        }
+        .depth-base-select-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #2a2a3e;
+            color: #e0e0e0;
+            border: 1px solid #3a3a4e;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .depth-base-select-btn:hover {
+            border-color: #4a4a6e;
+            background: #323248;
+        }
+        .depth-base-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #1d2438;
+            border: 1px solid #2a2a4e;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            overflow: hidden;
+        }
+        .depth-base-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 12px;
+            border: none;
+            border-bottom: 1px solid #2a2a4e;
+            background: #15192b;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        .depth-base-search:focus {
+            outline: none;
+        }
+        .depth-base-search::placeholder {
+            color: #6b7594;
+        }
+        .depth-base-options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .depth-base-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #c6d0ff;
+        }
+        .depth-base-option:hover {
+            background: #2a2a4e;
+        }
+        .depth-base-option.no-results {
+            color: #848e9c;
+            text-align: center;
+            cursor: default;
+        }
         .depth-main-area {
             flex: 1;
             display: flex;
@@ -109,17 +247,101 @@
             color: #7f8ab0;
         }
         .depth-current-price-tag {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #2a2a4e;
+            background: #15192b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+        .depth-price-pills {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .depth-price-pill {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
             padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.6);
-            font-size: 12px;
+            min-width: 0;
+            font-size: 13px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .depth-price-pill:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .depth-price-pill .depth-price-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0;
+            flex: 1;
+        }
+        .depth-price-checkbox {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: #3b82f6;
+            margin: 0;
+        }
+        .depth-price-pill:not(:last-child) {
+            border-bottom: 1px solid #2a2a4e;
+        }
+        .depth-price-pill .depth-price-value {
+            color: #e8ecff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+        }
+        .depth-price-pill .depth-price-label {
+            color: #8f9bbd;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .depth-price-pill.lower {
+            background: rgba(81, 207, 102, 0.08);
+            border-left: 2px solid rgba(81, 207, 102, 0.6);
+        }
+        .depth-price-pill.higher {
+            background: rgba(255, 107, 107, 0.08);
+            border-left: 2px solid rgba(255, 107, 107, 0.5);
+        }
+        .depth-price-pill.single {
+            border-left: 2px solid rgba(148, 163, 255, 0.5);
+        }
+        .depth-current-price-tag .depth-price-diff {
+            border-top: 1px solid #2a2a4e;
+        }
+        .depth-price-diff {
+            padding: 5px 10px;
+            background: rgba(59, 130, 246, 0.06);
+            font-size: 11px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            flex-wrap: wrap;
         }
-        .depth-current-price-tag span {
-            color: #dbe4ff;
+        .depth-price-diff .depth-diff-label {
+            color: #8f9bbd;
+        }
+        .depth-price-diff .depth-diff-value {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .depth-price-diff .depth-diff-value.positive {
+            color: #ff6b6b;
+        }
+        .depth-price-diff .depth-diff-value.negative {
+            color: #51cf66;
         }
         .depth-chart-shell {
             position: relative;
@@ -190,15 +412,30 @@
 </head>
 <body>
 <div class="depth-page-container">
-    <aside class="depth-config-panel">
-        <h2>Depth Control</h2>
+    <div class="depth-panel-wrapper" id="depth-panel-wrapper">
+        <button type="button" class="depth-panel-toggle" id="depth-panel-toggle" title="Open / close control panel" aria-label="Toggle control panel">
+            <span class="depth-panel-toggle-icon">◀</span>
+        </button>
+        <aside class="depth-config-panel" id="depth-config-panel">
+            <h2>Depth Control</h2>
+
+        <div class="depth-config-section">
+            <h3>Current Price</h3>
+            <div class="depth-current-price-tag" id="depth-header-prices"></div>
+        </div>
 
         <div class="depth-config-section">
             <h3>Base (BINANCE + OKX)</h3>
-            <select id="depth-base-select" style="width: 100%; padding: 8px; background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e; border-radius: 4px; cursor: pointer;">
-                <option value="BTC">BTC</option>
-                <option value="ETH">ETH</option>
-            </select>
+            <div class="depth-base-select-wrapper" id="depth-base-select-wrapper">
+                <button type="button" class="depth-base-select-btn" id="depth-base-select-btn">
+                    <span id="depth-base-select-label">BTC</span>
+                    <span>▼</span>
+                </button>
+                <div class="depth-base-dropdown" id="depth-base-dropdown">
+                    <input type="text" class="depth-base-search" id="depth-base-search" placeholder="Search base..." autocomplete="off" />
+                    <div class="depth-base-options" id="depth-base-options"></div>
+                </div>
+            </div>
         </div>
 
         <div class="depth-config-section">
@@ -243,17 +480,14 @@
                 <span id="depth-status-okx-ob">Disconnected</span>
             </div>
         </div>
-    </aside>
+        </aside>
+    </div>
 
     <main class="depth-main-area">
         <div class="depth-header">
             <div>
                 <div class="depth-header-title">Orderbook Depth</div>
                 <div class="depth-header-subtitle">Per-symbol aggregated depth by price bucket</div>
-            </div>
-            <div class="depth-current-price-tag" style="display: flex; gap: 12px;">
-                <span>Binance: <span id="depth-header-last-binance">--</span></span>
-                <span>OKX: <span id="depth-header-last-okx">--</span></span>
             </div>
         </div>
 
@@ -301,6 +535,7 @@
         viewHalfRange: null,
         lastAggMinPrice: null,
         lastAggMaxPrice: null,
+        linkedExchanges: new Set(['BINANCE', 'OKX']),
     };
 
     DEPTH_EXCHANGES.forEach(ex => {
@@ -647,6 +882,56 @@
         });
     }
 
+    function updateHeaderPriceTags() {
+        const container = document.getElementById('depth-header-prices');
+        if (!container) return;
+
+        const p = depthState.pricePrecision;
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+
+        const items = [
+            { exchange: 'BINANCE', price: binancePrice },
+            { exchange: 'OKX', price: okxPrice },
+        ].sort((a, b) => {
+            const va = Number.isFinite(a.price) ? a.price : -Infinity;
+            const vb = Number.isFinite(b.price) ? b.price : -Infinity;
+            return va - vb;
+        });
+
+        const hasBoth = Number.isFinite(binancePrice) && Number.isFinite(okxPrice);
+        const lowPrice = hasBoth ? Math.min(binancePrice, okxPrice) : null;
+        const highPrice = hasBoth ? Math.max(binancePrice, okxPrice) : null;
+        const linked = depthState.linkedExchanges;
+        const isLinked = linked.size === 2;
+
+        const pillsHtml = items.map(({ exchange, price }) => {
+            const display = Number.isFinite(price) ? `$${Number(price).toFixed(p)}` : '--';
+            let pillClass = 'depth-price-pill';
+            if (hasBoth) {
+                if (price <= lowPrice) pillClass += ' lower';
+                else if (price >= highPrice) pillClass += ' higher';
+            } else {
+                pillClass += ' single';
+            }
+            const checked = linked.has(exchange) ? ' checked' : '';
+            const id = 'depth-price-check-' + exchange;
+            return `<label class="${pillClass}" for="${id}"><input type="checkbox" id="${id}" class="depth-price-checkbox" data-exchange="${exchange}"${checked} title="Tick to compare (max 2)"><div class="depth-price-content"><span class="depth-price-value">${display}</span><span class="depth-price-label">${exchange}</span></div></label>`;
+        }).join('');
+
+        let diffHtml = '';
+        if (isLinked && hasBoth && lowPrice > 0) {
+            const pctDiff = ((highPrice - lowPrice) / lowPrice) * 100;
+            const higherExchange = binancePrice >= okxPrice ? 'BINANCE' : 'OKX';
+            const lowerExchange = binancePrice < okxPrice ? 'BINANCE' : 'OKX';
+            const diffClass = pctDiff >= 0 ? 'positive' : 'negative';
+            const diffSign = pctDiff >= 0 ? '+' : '';
+            diffHtml = `<div class="depth-price-diff"><span class="depth-diff-label">Difference</span><span class="depth-diff-value ${diffClass}">${diffSign}${pctDiff.toFixed(4)}%</span><span class="depth-diff-label">( ${lowerExchange} < ${higherExchange} )</span></div>`;
+        }
+
+        container.innerHTML = `<div class="depth-price-pills">${pillsHtml}</div>` + diffHtml;
+    }
+
     function handleDepthPriceUpdate(data, exchange) {
         if (!data || typeof data.middle === 'undefined') return;
         if (!depthState.exchanges[exchange]) return;
@@ -659,15 +944,12 @@
 
         if (exchange === 'BINANCE') {
             const el = document.getElementById('depth-last-binance');
-            const headerEl = document.getElementById('depth-header-last-binance');
             if (el) el.textContent = display;
-            if (headerEl) headerEl.textContent = display;
         } else {
             const el = document.getElementById('depth-last-okx');
-            const headerEl = document.getElementById('depth-header-last-okx');
             if (el) el.textContent = display;
-            if (headerEl) headerEl.textContent = display;
         }
+        updateHeaderPriceTags();
         drawDepthChart();
     }
 
@@ -796,9 +1078,11 @@
 
             document.getElementById('depth-last-binance').textContent = '--';
             document.getElementById('depth-last-okx').textContent = '--';
-            document.getElementById('depth-header-last-binance').textContent = '--';
-            document.getElementById('depth-header-last-okx').textContent = '--';
+            updateHeaderPriceTags();
             drawDepthChart();
+            closeBaseDropdown();
+            const labelEl = document.getElementById('depth-base-select-label');
+            if (labelEl) labelEl.textContent = depthState.base;
         } catch (e) {
             console.error('Select base failed', e);
         }
@@ -832,18 +1116,112 @@
             });
         }
 
-        const baseSelect = document.getElementById('depth-base-select');
-        if (baseSelect) {
-            baseSelect.addEventListener('change', () => selectBase(baseSelect.value));
+        initDepthPanel();
+        initBaseSelect([]);
+
+        const priceContainer = document.getElementById('depth-header-prices');
+        if (priceContainer && !priceContainer._linkChangeInited) {
+            priceContainer._linkChangeInited = true;
+            priceContainer.addEventListener('change', (e) => {
+                const cb = e.target;
+                if (!cb.classList.contains('depth-price-checkbox')) return;
+                const ex = cb.getAttribute('data-exchange');
+                if (!ex) return;
+                const linked = depthState.linkedExchanges;
+                if (cb.checked) {
+                    if (linked.size >= 2) {
+                        const first = linked.values().next().value;
+                        linked.delete(first);
+                    }
+                    linked.add(ex);
+                } else {
+                    linked.delete(ex);
+                }
+                updateHeaderPriceTags();
+            });
         }
+
+        updateHeaderPriceTags();
 
         (async () => {
             const bases = await fetchCommonBases();
-            if (bases.length > 0 && baseSelect) {
-                baseSelect.innerHTML = bases.map(b => `<option value="${b}" ${b === depthState.base ? 'selected' : ''}>${b}</option>`).join('');
-            }
+            initBaseSelect(bases);
             await selectBase(depthState.base);
         })();
+    }
+
+    function initDepthPanel() {
+        const wrapper = document.getElementById('depth-panel-wrapper');
+        const toggleBtn = document.getElementById('depth-panel-toggle');
+        if (!wrapper || !toggleBtn) return;
+        toggleBtn.addEventListener('click', () => {
+            wrapper.classList.toggle('collapsed');
+            toggleBtn.title = wrapper.classList.contains('collapsed') ? 'Open control panel' : 'Close control panel';
+        });
+        toggleBtn.title = 'Close control panel';
+    }
+
+    let baseSelectInited = false;
+    let commonBasesList = [];
+
+    function renderBaseOptions(bases, filter) {
+        const container = document.getElementById('depth-base-options');
+        if (!container) return;
+        const q = (filter || '').trim().toUpperCase();
+        const list = q ? bases.filter(b => b.toUpperCase().includes(q)) : bases;
+        if (list.length === 0) {
+            container.innerHTML = '<div class="depth-base-option no-results">No results</div>';
+            return;
+        }
+        container.innerHTML = list.map(b => `<div class="depth-base-option" data-base="${b}">${b}</div>`).join('');
+        container.querySelectorAll('.depth-base-option:not(.no-results)').forEach(el => {
+            el.addEventListener('click', () => selectBase(el.dataset.base));
+        });
+    }
+
+    function closeBaseDropdown() {
+        const dropdown = document.getElementById('depth-base-dropdown');
+        const searchInput = document.getElementById('depth-base-search');
+        if (dropdown) dropdown.style.display = 'none';
+        if (searchInput) searchInput.value = '';
+    }
+
+    function initBaseSelect(bases) {
+        commonBasesList = Array.isArray(bases) ? bases : [];
+        const labelEl = document.getElementById('depth-base-select-label');
+        if (labelEl) labelEl.textContent = depthState.base;
+        renderBaseOptions(commonBasesList);
+
+        if (baseSelectInited) return;
+        baseSelectInited = true;
+
+        const btn = document.getElementById('depth-base-select-btn');
+        const dropdown = document.getElementById('depth-base-dropdown');
+        const searchInput = document.getElementById('depth-base-search');
+        if (btn && dropdown) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = dropdown.style.display === 'block';
+                if (isOpen) {
+                    closeBaseDropdown();
+                } else {
+                    dropdown.style.display = 'block';
+                    renderBaseOptions(commonBasesList);
+                    setTimeout(() => searchInput && searchInput.focus(), 50);
+                }
+            });
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', () => renderBaseOptions(commonBasesList, searchInput.value));
+            searchInput.addEventListener('click', (e) => e.stopPropagation());
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeBaseDropdown();
+            });
+        }
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('depth-base-select-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) closeBaseDropdown();
+        });
     }
 
     if (document.readyState === 'loading') {
