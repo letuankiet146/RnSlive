@@ -521,12 +521,14 @@
 <script>
     const DEPTH_TICK_LEVEL_MULTIPLIERS = [1, 10, 100, 1000, 10000];
     const DEPTH_BASE_URL = 'http://localhost:8080';
+    const BINANCE_EXCHANGE_INFO_URL = 'https://api.binance.com/api/v3/exchangeInfo';
     const DEPTH_EXCHANGES = ['BINANCE', 'OKX'];
 
     const depthState = {
         base: 'BTC',
         symbolsByExchange: { BINANCE: 'BTCUSDT', OKX: 'BTC-USDT-SWAP' },
         pricePrecision: 2,
+        quantityPrecision: 4,
         baseTickSize: 0.5,
         tickLevelIndex: 0,
         exchanges: {},
@@ -537,6 +539,39 @@
         lastAggMaxPrice: null,
         linkedExchanges: new Set(['BINANCE', 'OKX']),
     };
+
+    function decimalPlacesFromStep(stepStr) {
+        const s = String(stepStr).trim();
+        const i = s.indexOf('.');
+        if (i === -1) return 0;
+        const after = s.slice(i + 1).replace(/0+$/, '');
+        return after.length;
+    }
+
+    async function fetchBinanceSymbolInfo(symbol) {
+        if (!symbol) return null;
+        try {
+            const r = await fetch(BINANCE_EXCHANGE_INFO_URL);
+            const data = await r.json();
+            const sym = (data.symbols || []).find(s => (s.symbol || '').toUpperCase() === symbol.toUpperCase());
+            if (!sym || !Array.isArray(sym.filters)) return null;
+            const priceFilter = sym.filters.find(f => f.filterType === 'PRICE_FILTER');
+            const lotFilter = sym.filters.find(f => f.filterType === 'LOT_SIZE');
+            const tickSizeStr = priceFilter && priceFilter.tickSize ? priceFilter.tickSize : '0.01';
+            const stepSizeStr = lotFilter && lotFilter.stepSize ? lotFilter.stepSize : '0.0001';
+            const baseTickSize = parseFloat(tickSizeStr);
+            const pricePrecision = decimalPlacesFromStep(tickSizeStr);
+            const quantityPrecision = decimalPlacesFromStep(stepSizeStr);
+            return {
+                baseTickSize: Number.isFinite(baseTickSize) ? baseTickSize : 0.01,
+                pricePrecision: Math.max(0, Math.min(pricePrecision, 12)),
+                quantityPrecision: Math.max(0, Math.min(quantityPrecision, 12)),
+            };
+        } catch (e) {
+            console.error('Fetch Binance exchange info failed', e);
+            return null;
+        }
+    }
 
     DEPTH_EXCHANGES.forEach(ex => {
         depthState.exchanges[ex] = { currentPrice: null, orderbook: { bids: {}, asks: {} } };
@@ -751,7 +786,7 @@
             depthCtx.lineTo(paddingLeft + plotWidth, y);
             depthCtx.stroke();
             depthCtx.globalAlpha = 1;
-            depthCtx.fillText(qty.toFixed(2), 4, y + 3);
+            depthCtx.fillText(qty.toFixed(depthState.quantityPrecision), 4, y + 3);
         }
 
         const xTicks = 6;
@@ -1024,7 +1059,7 @@
         }
 
         const priceStr = hovered.price.toFixed(depthState.pricePrecision);
-        const cumStr = hovered.cumQty.toFixed(4);
+        const cumStr = hovered.cumQty.toFixed(depthState.quantityPrecision);
         const sideLabel = hovered.side === 'bid' ? 'Bid' : 'Ask';
         const exchangeLabel = hovered.exchange || '';
 
@@ -1066,6 +1101,14 @@
             }
             depthState.base = (d.base || base).toUpperCase();
             depthState.symbolsByExchange = d.symbols;
+
+            const binanceSymbol = depthState.symbolsByExchange.BINANCE;
+            const symbolInfo = await fetchBinanceSymbolInfo(binanceSymbol);
+            if (symbolInfo) {
+                depthState.baseTickSize = symbolInfo.baseTickSize;
+                depthState.pricePrecision = symbolInfo.pricePrecision;
+                depthState.quantityPrecision = symbolInfo.quantityPrecision;
+            }
 
             DEPTH_EXCHANGES.forEach(ex => {
                 depthState.exchanges[ex].currentPrice = null;
