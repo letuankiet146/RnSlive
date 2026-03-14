@@ -210,6 +210,22 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
+    public Mono<String> getExchangeInfo(ExchangeName exchangeName) {
+        switch (exchangeName) {
+            case BINGX:
+                throw new RuntimeException("Not implemented");
+            case BINANCE:
+                return binanceService.getExchangeInfo();
+            case OKX:
+                return okxService.getExchangeInfo();
+            case BYBIT:
+                throw new RuntimeException("Not implemented");
+            default:
+                throw new RuntimeException("Exchange not supported: " + exchangeName);
+        }
+    }
+
+    @Override
     public Mono<Depth> getDepth(ExchangeName exchangeName, String symbol, int limit) {
         switch (exchangeName) {
             case BINGX:

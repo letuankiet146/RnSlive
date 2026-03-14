@@ -32,10 +32,19 @@ public class OKXExFutureClientImpl implements ExFutureClient {
     private OKXFutureWebSocket webSocket;
 
     @Override
+    public Mono<String> getExchangeInfo() {
+        TreeMap<String, Object> sortedParams = new TreeMap<>();
+        sortedParams.put("instType", "SWAP");
+        String path = UrlBuilder.joinQueryParameters(RESTApiUrl.OKX_GET_INSTRUMENTS_URL +"?", sortedParams);
+        return requester.sendRequest(HttpMethod.GET, path);
+    }
+
+    @Override
     public Mono<String> getDepth(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(RESTApiUrl.OKX_GET_DEPTH_FULL_URL +"?", sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);
     }
+
 
     @Override
     public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {

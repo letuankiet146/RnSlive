@@ -23,6 +23,11 @@ public class BinanceExFutureClientImpl implements ExFutureClient {
     private BinanceFutureRequester requester;
 
     @Override
+    public Mono<String> getExchangeInfo() {
+        return requester.sendRequest(HttpMethod.GET, RESTApiUrl.BINANCE_GET_EXCHANGE_INFO_URL);
+    }
+
+    @Override
     public Mono<String> getDepth(TreeMap<String, Object> sortedParams) {
         String path = UrlBuilder.joinQueryParameters(RESTApiUrl.BINANCE_GET_DEPTH_URL +"?", sortedParams);
         return requester.sendRequest(HttpMethod.GET, path);

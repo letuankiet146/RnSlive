@@ -29,6 +29,16 @@ public class ExchangeServiceImpl_MarketData_Test {
     }
 
     @Test
+    public void testGetExchangeInfo() {
+        var binanceExchangeInfo = exchangeServiceImpl.getExchangeInfo(ExchangeName.BINANCE).block();
+        var okxExchangeInfo = exchangeServiceImpl.getExchangeInfo(ExchangeName.OKX).block();
+        Assertions.assertNotNull(binanceExchangeInfo);
+        Assertions.assertFalse(binanceExchangeInfo.isEmpty());
+        Assertions.assertNotNull(okxExchangeInfo);
+        Assertions.assertFalse(okxExchangeInfo.isEmpty());
+    }
+
+    @Test
     public void testSubscribeDepth() throws InterruptedException {
         exchangeServiceImpl.subscribeDepth(ExchangeName.BINGX, SYMBOL, "500ms", System.out::println);
     }

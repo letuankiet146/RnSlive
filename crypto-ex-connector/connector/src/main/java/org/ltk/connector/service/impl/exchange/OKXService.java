@@ -20,6 +20,10 @@ public class OKXService {
     @Autowired
     private OKXExFutureClientImpl exFutureClient;
 
+    public Mono<String> getExchangeInfo() {
+        return exFutureClient.getExchangeInfo();
+    }
+
     public Mono<Depth> getDepth(String symbol, int limit) {
         TreeMap<String, Object> sortedParams = new TreeMap<>();
         sortedParams.put("instId", symbol);

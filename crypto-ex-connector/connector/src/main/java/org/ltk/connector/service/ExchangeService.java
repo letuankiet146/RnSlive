@@ -27,6 +27,7 @@ public interface ExchangeService {
     void closeAllPosition(ExchangeName exchangeName, String symbol);
     double getMarkPrice(ExchangeName exchangeName, String symbol);
     void setLeverage(ExchangeName exchangeName, String symbol, int leverage, String positionSide);
+    Mono<String> getExchangeInfo(ExchangeName exchangeName);
     Mono<Depth> getDepth(ExchangeName exchangeName, String symbol, int limit);
     Mono<List<Kline>> getKline(ExchangeName exchangeName, String symbol, String interval, Long startTime, Long endTime, Integer limit);
     void subscribeMarkPrice(ExchangeName exchangeName, String symbol, String interval, Consumer<String> callback);

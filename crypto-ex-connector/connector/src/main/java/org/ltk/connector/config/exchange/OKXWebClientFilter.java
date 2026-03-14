@@ -14,9 +14,7 @@ public class OKXWebClientFilter extends AbstractExchangeWebClientConfig {
 
     @Override
     public void config(WebClient.Builder builder) {
-        builder.filter(logRequest())
-                .filter(logResponse())
-        ;
+        builder.filter(logRequest());
     }
 
     @Override

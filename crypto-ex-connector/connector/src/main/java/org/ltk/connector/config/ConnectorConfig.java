@@ -39,6 +39,8 @@ public class ConnectorConfig {
 
     private WebClient buildWebClient(String baseUrl, Consumer<WebClient.Builder> config) {
         return WebClient.builder()
+                .codecs(configurer ->
+                        configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
                 .baseUrl(baseUrl)
                 .apply(config)
                 .build();

@@ -39,6 +39,9 @@ public interface ExFutureClient {
     default Mono<String> closeAllPosition(TreeMap<String, Object> sortedParams) {
         return Mono.error(new RuntimeException("Exchange not supported"));
     }
+    default Mono<String> getExchangeInfo() {
+        return Mono.error(new RuntimeException("Exchange not supported"));
+    }
     default Mono<String> getDepth(TreeMap<String, Object> sortedParams) {
         return Mono.error(new RuntimeException("Exchange not supported"));
     }

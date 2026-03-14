@@ -13,6 +13,8 @@ public class RESTApiUrl {
     public static final String BINGX_GET_LISTEN_KEY_URL = "/openApi/user/auth/userDataStream";
 
     public static final String OKX_GET_DEPTH_FULL_URL = "/api/v5/market/books-full";
+    public static final String OKX_GET_INSTRUMENTS_URL = "/api/v5/public/instruments";
+    public static final String BINANCE_GET_EXCHANGE_INFO_URL = "/fapi/v1/exchangeInfo";
     public static final String BINANCE_GET_DEPTH_URL = "/fapi/v1/depth";
     public static final String BINANCE_GET_KLINE_URL = "/fapi/v1/klines";
 
