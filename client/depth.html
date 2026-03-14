@@ -194,9 +194,10 @@
         <h2>Depth Control</h2>
 
         <div class="depth-config-section">
-            <h3>Symbol</h3>
-            <select id="depth-symbol-select" style="width: 100%; padding: 8px; background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e; border-radius: 4px; cursor: pointer;">
-                <option value="BTCUSDT">BTCUSDT</option>
+            <h3>Base (BINANCE + OKX)</h3>
+            <select id="depth-base-select" style="width: 100%; padding: 8px; background: #2a2a3e; color: #e0e0e0; border: 1px solid #3a3a4e; border-radius: 4px; cursor: pointer;">
+                <option value="BTC">BTC</option>
+                <option value="ETH">ETH</option>
             </select>
         </div>
 
@@ -212,30 +213,34 @@
         </div>
 
         <div class="depth-config-section">
-            <h3>Price Band</h3>
+            <h3>Last Price</h3>
             <div class="depth-config-item">
-                <label>Resistance Price</label>
-                <span id="depth-resistance-price" class="depth-price-resistance">--</span>
+                <label>Binance</label>
+                <span id="depth-last-binance">--</span>
             </div>
             <div class="depth-config-item">
-                <label>Last Price</label>
-                <span id="depth-last-price">--</span>
-            </div>
-            <div class="depth-config-item">
-                <label>Support Price</label>
-                <span id="depth-support-price" class="depth-price-support">--</span>
+                <label>OKX</label>
+                <span id="depth-last-okx">--</span>
             </div>
         </div>
 
         <div class="depth-config-section">
             <h3>Status</h3>
             <div class="depth-config-item">
-                <label>Price Stream</label>
-                <span id="depth-price-status">Disconnected</span>
+                <label>Binance Price</label>
+                <span id="depth-status-binance-price">Disconnected</span>
             </div>
             <div class="depth-config-item">
-                <label>Orderbook Stream</label>
-                <span id="depth-orderbook-status">Disconnected</span>
+                <label>Binance Orderbook</label>
+                <span id="depth-status-binance-ob">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>OKX Price</label>
+                <span id="depth-status-okx-price">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>OKX Orderbook</label>
+                <span id="depth-status-okx-ob">Disconnected</span>
             </div>
         </div>
     </aside>
@@ -246,9 +251,9 @@
                 <div class="depth-header-title">Orderbook Depth</div>
                 <div class="depth-header-subtitle">Per-symbol aggregated depth by price bucket</div>
             </div>
-            <div class="depth-current-price-tag">
-                <span>Last Price</span>
-                <span id="depth-header-last-price">--</span>
+            <div class="depth-current-price-tag" style="display: flex; gap: 12px;">
+                <span>Binance: <span id="depth-header-last-binance">--</span></span>
+                <span>OKX: <span id="depth-header-last-okx">--</span></span>
             </div>
         </div>
 
@@ -256,14 +261,22 @@
             <canvas id="depth-canvas"></canvas>
             <div class="depth-axis-label">Qty</div>
             <div class="depth-axis-label-x">Price</div>
-            <div class="depth-legend">
+            <div class="depth-legend" style="flex-wrap: wrap; gap: 8px;">
                 <div class="depth-legend-item">
                     <div class="depth-legend-swatch bid"></div>
-                    <span>Bids</span>
+                    <span>Binance Bids</span>
                 </div>
                 <div class="depth-legend-item">
                     <div class="depth-legend-swatch ask"></div>
-                    <span>Asks</span>
+                    <span>Binance Asks</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch" style="background: rgba(0, 188, 212, 0.8);"></div>
+                    <span>OKX Bids</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch" style="background: rgba(255, 152, 0, 0.8);"></div>
+                    <span>OKX Asks</span>
                 </div>
             </div>
         </div>
@@ -271,37 +284,43 @@
     </main>
 </div>
 
-<script src="symbol-selector.js"></script>
 <script>
     const DEPTH_TICK_LEVEL_MULTIPLIERS = [1, 10, 100, 1000, 10000];
+    const DEPTH_BASE_URL = 'http://localhost:8080';
+    const DEPTH_EXCHANGES = ['BINANCE', 'OKX'];
 
     const depthState = {
-        symbol: 'BTCUSDT',
+        base: 'BTC',
+        symbolsByExchange: { BINANCE: 'BTCUSDT', OKX: 'BTC-USDT-SWAP' },
         pricePrecision: 2,
         baseTickSize: 0.5,
         tickLevelIndex: 0,
-        currentPrice: null,
-        top: null,
-        bottom: null,
-        orderbook: { bids: {}, asks: {} },
-        priceEventSource: null,
-        orderbookEventSource: null,
+        exchanges: {},
+        priceStreams: {},
+        orderbookStreams: {},
         viewHalfRange: null,
         lastAggMinPrice: null,
         lastAggMaxPrice: null,
     };
 
+    DEPTH_EXCHANGES.forEach(ex => {
+        depthState.exchanges[ex] = { currentPrice: null, orderbook: { bids: {}, asks: {} } };
+        depthState.priceStreams[ex] = null;
+        depthState.orderbookStreams[ex] = null;
+    });
+
     let depthCanvas;
     let depthCtx;
-    let depthBars = []; // for tooltip hit-testing
+    let depthBars = [];
 
     function getBucketSize() {
         const multiplier = DEPTH_TICK_LEVEL_MULTIPLIERS[depthState.tickLevelIndex] || 1;
         return depthState.baseTickSize * multiplier;
     }
 
-    function aggregateDepth() {
+    function aggregateDepthForExchange(exchange) {
         const bucketSize = getBucketSize();
+        const orderbook = depthState.exchanges[exchange]?.orderbook || { bids: {}, asks: {} };
         if (!bucketSize || !Number.isFinite(bucketSize)) {
             return { bids: new Map(), asks: new Map(), minPrice: null, maxPrice: null };
         }
@@ -311,7 +330,7 @@
         let minPrice = Number.POSITIVE_INFINITY;
         let maxPrice = Number.NEGATIVE_INFINITY;
 
-        Object.entries(depthState.orderbook.bids || {}).forEach(([priceStr, qty]) => {
+        Object.entries(orderbook.bids || {}).forEach(([priceStr, qty]) => {
             const price = parseFloat(priceStr);
             if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
             const bucketIndex = Math.floor(price / bucketSize);
@@ -321,7 +340,7 @@
             maxPrice = Math.max(maxPrice, bucketPrice);
         });
 
-        Object.entries(depthState.orderbook.asks || {}).forEach(([priceStr, qty]) => {
+        Object.entries(orderbook.asks || {}).forEach(([priceStr, qty]) => {
             const price = parseFloat(priceStr);
             if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
             const bucketIndex = Math.floor(price / bucketSize);
@@ -332,15 +351,36 @@
         });
 
         if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
-            depthState.lastAggMinPrice = null;
-            depthState.lastAggMaxPrice = null;
             return { bids: bidsAgg, asks: asksAgg, minPrice: null, maxPrice: null };
         }
-
-        depthState.lastAggMinPrice = minPrice;
-        depthState.lastAggMaxPrice = maxPrice;
-
         return { bids: bidsAgg, asks: asksAgg, minPrice, maxPrice };
+    }
+
+    function getMergedPriceRange() {
+        let minP = Number.POSITIVE_INFINITY;
+        let maxP = Number.NEGATIVE_INFINITY;
+        DEPTH_EXCHANGES.forEach(ex => {
+            const r = aggregateDepthForExchange(ex);
+            if (r.minPrice != null) minP = Math.min(minP, r.minPrice);
+            if (r.maxPrice != null) maxP = Math.max(maxP, r.maxPrice);
+        });
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+        [binancePrice, okxPrice].forEach(p => {
+            if (Number.isFinite(p)) { minP = Math.min(minP, p); maxP = Math.max(maxP, p); }
+        });
+        if (!Number.isFinite(minP) || !Number.isFinite(maxP)) return { minPrice: null, maxPrice: null };
+        depthState.lastAggMinPrice = minP;
+        depthState.lastAggMaxPrice = maxP;
+        return { minPrice: minP, maxPrice: maxP };
+    }
+
+    function getCenterPrice() {
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+        const prices = [binancePrice, okxPrice].filter(p => Number.isFinite(p));
+        if (prices.length === 0) return null;
+        return prices.reduce((a, b) => a + b, 0) / prices.length;
     }
 
     function resizeDepthCanvas() {
@@ -354,6 +394,11 @@
         drawDepthChart();
     }
 
+    const EXCHANGE_COLORS = {
+        BINANCE: { bid: ['rgba(81, 207, 102, 0.85)', 'rgba(81, 207, 102, 0.25)'], ask: ['rgba(255, 107, 107, 0.9)', 'rgba(255, 107, 107, 0.28)'] },
+        OKX: { bid: ['rgba(0, 188, 212, 0.85)', 'rgba(0, 188, 212, 0.25)'], ask: ['rgba(255, 152, 0, 0.9)', 'rgba(255, 152, 0, 0.28)'] },
+    };
+
     function drawDepthChart() {
         if (!depthCtx || !depthCanvas) return;
 
@@ -363,8 +408,9 @@
 
         depthCtx.clearRect(0, 0, width, height);
 
-        const { bids, asks, minPrice, maxPrice } = aggregateDepth();
-        if (minPrice == null || maxPrice == null || depthState.currentPrice == null) {
+        const centerPrice = getCenterPrice();
+        const { minPrice, maxPrice } = getMergedPriceRange();
+        if (centerPrice == null || minPrice == null || maxPrice == null) {
             return;
         }
 
@@ -380,7 +426,6 @@
         if (plotWidth <= 0 || plotHeight <= 0) return;
         const fullRange = maxPrice - minPrice || 1;
 
-        // Keep current price centered: view range is symmetric around it
         let halfRange = depthState.viewHalfRange;
         if (!halfRange) {
             halfRange = fullRange / 2 || (getBucketSize() * 50);
@@ -389,7 +434,6 @@
             depthState.viewHalfRange = halfRange;
         }
 
-        const centerPrice = depthState.currentPrice;
         let viewMin = centerPrice - halfRange;
         let viewMax = centerPrice + halfRange;
         if (viewMin === viewMax) {
@@ -402,73 +446,70 @@
             return paddingLeft + ((price - viewMin) / priceRange) * plotWidth;
         }
 
-        // Vertical line at current price (always visually centered due to viewMin/viewMax)
-        const currentX = xCoord(centerPrice);
-        depthCtx.save();
-        depthCtx.strokeStyle = 'rgba(148, 163, 255, 0.5)';
-        depthCtx.setLineDash([4, 4]);
-        depthCtx.beginPath();
-        depthCtx.moveTo(currentX, paddingTop);
-        depthCtx.lineTo(currentX, paddingTop + plotHeight);
-        depthCtx.stroke();
-        depthCtx.restore();
-
         const bucketSize = getBucketSize();
-        const halfBarWidth = Math.max(1, (bucketSize / priceRange) * plotWidth * 0.45);
+        const halfBarWidth = Math.max(1, (bucketSize / priceRange) * plotWidth * 0.22);
 
-        // Prepare sorted buckets with cumulative quantity for tooltip,
-        // and also compute maxQty ONLY from currently visible buckets
-        const bidBuckets = Array.from(bids.entries())
-            .map(([price, qty]) => ({ price, qty }))
-            .filter(b => b.price <= centerPrice && b.price >= viewMin);
-        bidBuckets.sort((a, b) => b.price - a.price);
-        let runningBid = 0;
-        bidBuckets.forEach(b => {
-            runningBid += b.qty;
-            b.cumQty = runningBid;
+        let globalMaxQty = 0;
+        const allBucketsByExchange = [];
+
+        DEPTH_EXCHANGES.forEach(exchange => {
+            const { bids, asks } = aggregateDepthForExchange(exchange);
+            const exPrice = depthState.exchanges[exchange]?.currentPrice;
+            if (exPrice == null) return;
+
+            const bidBuckets = Array.from(bids.entries())
+                .map(([price, qty]) => ({ price, qty }))
+                .filter(b => b.price <= exPrice && b.price >= viewMin);
+            bidBuckets.sort((a, b) => b.price - a.price);
+            let running = 0;
+            bidBuckets.forEach(b => { running += b.qty; b.cumQty = running; });
+
+            const askBuckets = Array.from(asks.entries())
+                .map(([price, qty]) => ({ price, qty }))
+                .filter(a => a.price >= exPrice && a.price <= viewMax);
+            askBuckets.sort((a, b) => a.price - b.price);
+            running = 0;
+            askBuckets.forEach(a => { running += a.qty; a.cumQty = running; });
+
+            bidBuckets.forEach(b => { if (b.cumQty > globalMaxQty) globalMaxQty = b.cumQty; });
+            askBuckets.forEach(a => { if (a.cumQty > globalMaxQty) globalMaxQty = a.cumQty; });
+            allBucketsByExchange.push({ exchange, bidBuckets, askBuckets });
         });
 
-        const askBuckets = Array.from(asks.entries())
-            .map(([price, qty]) => ({ price, qty }))
-            .filter(a => a.price >= centerPrice && a.price <= viewMax);
-        askBuckets.sort((a, b) => a.price - b.price);
-        let runningAsk = 0;
-        askBuckets.forEach(a => {
-            runningAsk += a.qty;
-            a.cumQty = runningAsk;
-        });
-
-        if (bidBuckets.length === 0 && askBuckets.length === 0) {
-            return;
-        }
-
-        // Use cumulative quantities for scaling, to match depth behavior
-        const allVisibleQuantities = [
-            ...bidBuckets.map(b => b.cumQty),
-            ...askBuckets.map(a => a.cumQty),
-        ].filter(q => Number.isFinite(q) && q > 0);
-
-        if (allVisibleQuantities.length === 0) return;
-
-        const maxQty = Math.max(...allVisibleQuantities);
+        if (globalMaxQty <= 0) return;
 
         function barHeightForQty(qty) {
-            return (qty / maxQty) * plotHeight;
+            return (qty / globalMaxQty) * plotHeight;
         }
 
-        // Draw axes ticks (using maxQty from visible buckets)
+        // Vertical lines: Binance and OKX current price
+        DEPTH_EXCHANGES.forEach((exchange, i) => {
+            const exPrice = depthState.exchanges[exchange]?.currentPrice;
+            if (!Number.isFinite(exPrice)) return;
+            const x = xCoord(exPrice);
+            depthCtx.save();
+            depthCtx.strokeStyle = exchange === 'BINANCE' ? 'rgba(81, 207, 102, 0.7)' : 'rgba(0, 188, 212, 0.7)';
+            depthCtx.setLineDash([4, 4]);
+            depthCtx.lineWidth = 1.5;
+            depthCtx.beginPath();
+            depthCtx.moveTo(x, paddingTop);
+            depthCtx.lineTo(x, paddingTop + plotHeight);
+            depthCtx.stroke();
+            depthCtx.restore();
+        });
+
+        // Axes
         depthCtx.save();
         depthCtx.strokeStyle = 'rgba(50, 60, 100, 0.9)';
         depthCtx.lineWidth = 1;
         depthCtx.font = '10px system-ui';
         depthCtx.fillStyle = '#7c86aa';
 
-        // Y-axis (quantity)
         const yTicks = 4;
         for (let i = 0; i <= yTicks; i++) {
             const t = i / yTicks;
             const y = paddingTop + plotHeight - t * plotHeight;
-            const qty = t * maxQty;
+            const qty = t * globalMaxQty;
             depthCtx.globalAlpha = 0.3;
             depthCtx.beginPath();
             depthCtx.moveTo(paddingLeft, y);
@@ -478,7 +519,6 @@
             depthCtx.fillText(qty.toFixed(2), 4, y + 3);
         }
 
-        // X-axis (price)
         const xTicks = 6;
         for (let i = 0; i <= xTicks; i++) {
             const t = i / xTicks;
@@ -496,7 +536,7 @@
         }
         depthCtx.restore();
 
-        function drawBuckets(bucketArray, colorStart, colorEnd, side) {
+        function drawBuckets(bucketArray, colorStart, colorEnd, side, exchange) {
             depthCtx.save();
             const gradientHeight = plotHeight;
             bucketArray.forEach(bucket => {
@@ -504,149 +544,138 @@
                 const cumQty = bucket.cumQty;
                 if (!Number.isFinite(bucketPrice) || !Number.isFinite(cumQty) || cumQty <= 0) return;
                 const bucketX = xCoord(bucketPrice);
-
                 const barHeight = barHeightForQty(cumQty);
                 const x = bucketX - halfBarWidth;
                 const y = paddingTop + (plotHeight - barHeight);
 
-                const gradient = depthCtx.createLinearGradient(
-                    x,
-                    paddingTop,
-                    x + halfBarWidth * 2,
-                    paddingTop + gradientHeight
-                );
+                const gradient = depthCtx.createLinearGradient(x, paddingTop, x + halfBarWidth * 2, paddingTop + gradientHeight);
                 gradient.addColorStop(0, colorStart);
                 gradient.addColorStop(1, colorEnd);
-
                 depthCtx.fillStyle = gradient;
                 depthCtx.fillRect(x, y, halfBarWidth * 2, barHeight);
 
-                depthBars.push({
-                    x,
-                    y,
-                    width: halfBarWidth * 2,
-                    height: barHeight,
-                    price: bucketPrice,
-                    cumQty: bucket.cumQty,
-                    side,
-                });
+                depthBars.push({ x, y, width: halfBarWidth * 2, height: barHeight, price: bucketPrice, cumQty: bucket.cumQty, side, exchange });
             });
             depthCtx.restore();
         }
 
-        drawBuckets(bidBuckets,
-            'rgba(81, 207, 102, 0.85)',
-            'rgba(81, 207, 102, 0.25)',
-            'bid'
-        );
-        drawBuckets(askBuckets,
-            'rgba(255, 107, 107, 0.9)',
-            'rgba(255, 107, 107, 0.28)',
-            'ask'
-        );
+        allBucketsByExchange.forEach(({ exchange, bidBuckets, askBuckets }) => {
+            const colors = EXCHANGE_COLORS[exchange];
+            if (!colors) return;
+            drawBuckets(bidBuckets, colors.bid[0], colors.bid[1], 'bid', exchange);
+            drawBuckets(askBuckets, colors.ask[0], colors.ask[1], 'ask', exchange);
+        });
     }
 
-    function connectDepthPriceSSE() {
-        if (depthState.priceEventSource) {
-            depthState.priceEventSource.close();
-            depthState.priceEventSource = null;
+    function disconnectAllStreams() {
+        DEPTH_EXCHANGES.forEach(ex => {
+            if (depthState.priceStreams[ex]) {
+                depthState.priceStreams[ex].close();
+                depthState.priceStreams[ex] = null;
+            }
+            if (depthState.orderbookStreams[ex]) {
+                depthState.orderbookStreams[ex].close();
+                depthState.orderbookStreams[ex] = null;
+            }
+        });
+    }
+
+    function connectDepthPriceSSE(exchange) {
+        if (depthState.priceStreams[exchange]) {
+            depthState.priceStreams[exchange].close();
+            depthState.priceStreams[exchange] = null;
         }
+        const symbol = depthState.symbolsByExchange[exchange];
+        if (!symbol) return;
 
-        const statusEl = document.getElementById('depth-price-status');
-
-        const url = `http://localhost:8080/binance/stream/prices?symbol=${depthState.symbol}`;
+        const statusId = exchange === 'BINANCE' ? 'depth-status-binance-price' : 'depth-status-okx-price';
+        const statusEl = document.getElementById(statusId);
+        const url = `${DEPTH_BASE_URL}/${exchange.toLowerCase()}/stream/prices?symbol=${encodeURIComponent(symbol)}`;
         const es = new EventSource(url);
-        depthState.priceEventSource = es;
+        depthState.priceStreams[exchange] = es;
 
         es.onopen = () => {
-            if (statusEl) statusEl.textContent = 'Connected';
-            if (statusEl) statusEl.style.color = '#26a69a';
+            if (statusEl) { statusEl.textContent = 'Connected'; statusEl.style.color = '#26a69a'; }
         };
-
         es.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                handleDepthPriceUpdate(data);
-            } catch (e) {
-                console.error('Depth price SSE parse error', e);
-            }
+                handleDepthPriceUpdate(data, exchange);
+            } catch (e) { console.error('Depth price SSE parse error', e); }
         };
-
         es.onerror = () => {
-            if (statusEl) statusEl.textContent = 'Disconnected';
-            if (statusEl) statusEl.style.color = '#ef5350';
+            if (statusEl) { statusEl.textContent = 'Disconnected'; statusEl.style.color = '#ef5350'; }
             es.close();
-            setTimeout(connectDepthPriceSSE, 5000);
+            setTimeout(() => connectDepthPriceSSE(exchange), 5000);
         };
     }
 
-    function connectDepthOrderbookSSE() {
-        if (depthState.orderbookEventSource) {
-            depthState.orderbookEventSource.close();
-            depthState.orderbookEventSource = null;
+    function connectDepthOrderbookSSE(exchange) {
+        if (depthState.orderbookStreams[exchange]) {
+            depthState.orderbookStreams[exchange].close();
+            depthState.orderbookStreams[exchange] = null;
         }
+        const symbol = depthState.symbolsByExchange[exchange];
+        if (!symbol) return;
 
-        const statusEl = document.getElementById('depth-orderbook-status');
-
-        const url = `http://localhost:8080/binance/stream/orderbook?symbol=${depthState.symbol}`;
+        const statusId = exchange === 'BINANCE' ? 'depth-status-binance-ob' : 'depth-status-okx-ob';
+        const statusEl = document.getElementById(statusId);
+        const url = `${DEPTH_BASE_URL}/${exchange.toLowerCase()}/stream/orderbook?symbol=${encodeURIComponent(symbol)}`;
         const es = new EventSource(url);
-        depthState.orderbookEventSource = es;
+        depthState.orderbookStreams[exchange] = es;
 
         es.onopen = () => {
-            if (statusEl) statusEl.textContent = 'Connected';
-            if (statusEl) statusEl.style.color = '#26a69a';
+            if (statusEl) { statusEl.textContent = 'Connected'; statusEl.style.color = '#26a69a'; }
         };
-
         es.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                handleDepthOrderbookUpdate(data);
-            } catch (e) {
-                console.error('Depth orderbook SSE parse error', e);
-            }
+                handleDepthOrderbookUpdate(data, exchange);
+            } catch (e) { console.error('Depth orderbook SSE parse error', e); }
         };
-
         es.onerror = () => {
-            if (statusEl) statusEl.textContent = 'Disconnected';
-            if (statusEl) statusEl.style.color = '#ef5350';
+            if (statusEl) { statusEl.textContent = 'Disconnected'; statusEl.style.color = '#ef5350'; }
             es.close();
-            setTimeout(connectDepthOrderbookSSE, 5000);
+            setTimeout(() => connectDepthOrderbookSSE(exchange), 5000);
         };
     }
 
-    function handleDepthPriceUpdate(data) {
+    function connectAllStreams() {
+        DEPTH_EXCHANGES.forEach(ex => {
+            connectDepthPriceSSE(ex);
+            connectDepthOrderbookSSE(ex);
+        });
+    }
+
+    function handleDepthPriceUpdate(data, exchange) {
         if (!data || typeof data.middle === 'undefined') return;
+        if (!depthState.exchanges[exchange]) return;
 
-        depthState.currentPrice = data.middle;
-        depthState.top = data.top;
-        depthState.bottom = data.bottom;
+        depthState.exchanges[exchange].currentPrice = data.middle;
 
         const p = depthState.pricePrecision;
-        const resistanceEl = document.getElementById('depth-resistance-price');
-        const lastPriceEl = document.getElementById('depth-last-price');
-        const supportEl = document.getElementById('depth-support-price');
-        const headerPriceEl = document.getElementById('depth-header-last-price');
-
-        const topStr = Number.isFinite(data.top) ? data.top.toFixed(p) : '--';
         const midStr = Number.isFinite(data.middle) ? data.middle.toFixed(p) : '--';
-        const bottomStr = Number.isFinite(data.bottom) ? data.bottom.toFixed(p) : '--';
+        const display = midStr === '--' ? '--' : `$${midStr}`;
 
-        if (resistanceEl) resistanceEl.textContent = topStr === '--' ? '--' : `$${topStr}`;
-        if (lastPriceEl) lastPriceEl.textContent = midStr === '--' ? '--' : `$${midStr}`;
-        if (supportEl) supportEl.textContent = bottomStr === '--' ? '--' : `$${bottomStr}`;
-        if (headerPriceEl) headerPriceEl.textContent = midStr === '--' ? '--' : `$${midStr}`;
-
+        if (exchange === 'BINANCE') {
+            const el = document.getElementById('depth-last-binance');
+            const headerEl = document.getElementById('depth-header-last-binance');
+            if (el) el.textContent = display;
+            if (headerEl) headerEl.textContent = display;
+        } else {
+            const el = document.getElementById('depth-last-okx');
+            const headerEl = document.getElementById('depth-header-last-okx');
+            if (el) el.textContent = display;
+            if (headerEl) headerEl.textContent = display;
+        }
         drawDepthChart();
     }
 
-    function handleDepthOrderbookUpdate(data) {
-        if (!data || !data.bids || !data.asks) {
-            return;
-        }
-        depthState.orderbook = {
-            bids: data.bids,
-            asks: data.asks,
-        };
+    function handleDepthOrderbookUpdate(data, exchange) {
+        if (!data || !data.bids || !data.asks) return;
+        if (!depthState.exchanges[exchange]) return;
+
+        depthState.exchanges[exchange].orderbook = { bids: data.bids, asks: data.asks };
         drawDepthChart();
     }
 
@@ -668,7 +697,7 @@
     }
 
     function handleDepthWheel(event) {
-        if (!depthState.currentPrice || depthState.lastAggMinPrice == null) {
+        if (getCenterPrice() == null || depthState.lastAggMinPrice == null) {
             return;
         }
         event.preventDefault();
@@ -715,9 +744,10 @@
         const priceStr = hovered.price.toFixed(depthState.pricePrecision);
         const cumStr = hovered.cumQty.toFixed(4);
         const sideLabel = hovered.side === 'bid' ? 'Bid' : 'Ask';
+        const exchangeLabel = hovered.exchange || '';
 
         tooltip.innerHTML = `
-            <div><strong>${sideLabel}</strong></div>
+            <div><strong>${exchangeLabel} ${sideLabel}</strong></div>
             <div>Price: $${priceStr}</div>
             <div>Cumulative: ${cumStr}</div>
         `;
@@ -733,15 +763,45 @@
         tooltip.style.top = `${top}px`;
     }
 
-    function updateDepthSymbol(symbol, pricePrecision, tickSize) {
-        depthState.symbol = symbol;
-        depthState.pricePrecision = pricePrecision;
-        depthState.baseTickSize = tickSize;
-        depthState.currentPrice = null;
-        depthState.orderbook = { bids: {}, asks: {} };
+    async function fetchCommonBases() {
+        try {
+            const r = await fetch(`${DEPTH_BASE_URL}/symbol/common-bases?exchanges=BINANCE,OKX`);
+            const d = await r.json();
+            return Array.isArray(d.bases) ? d.bases : ['BTC', 'ETH'];
+        } catch (e) {
+            console.error('Fetch common bases failed', e);
+            return ['BTC', 'ETH'];
+        }
+    }
 
-        connectDepthPriceSSE();
-        connectDepthOrderbookSSE();
+    async function selectBase(base) {
+        try {
+            const r = await fetch(`${DEPTH_BASE_URL}/symbol/exists-on-all?exchanges=BINANCE,OKX&base=${encodeURIComponent(base)}`);
+            const d = await r.json();
+            if (!d.existsOnAll || !d.symbols) {
+                console.warn('Base not available on all exchanges:', base);
+                return;
+            }
+            depthState.base = (d.base || base).toUpperCase();
+            depthState.symbolsByExchange = d.symbols;
+
+            DEPTH_EXCHANGES.forEach(ex => {
+                depthState.exchanges[ex].currentPrice = null;
+                depthState.exchanges[ex].orderbook = { bids: {}, asks: {} };
+            });
+            depthState.viewHalfRange = null;
+
+            disconnectAllStreams();
+            connectAllStreams();
+
+            document.getElementById('depth-last-binance').textContent = '--';
+            document.getElementById('depth-last-okx').textContent = '--';
+            document.getElementById('depth-header-last-binance').textContent = '--';
+            document.getElementById('depth-header-last-okx').textContent = '--';
+            drawDepthChart();
+        } catch (e) {
+            console.error('Select base failed', e);
+        }
     }
 
     function initDepthPage() {
@@ -772,24 +832,18 @@
             });
         }
 
-        const symbolSelector = new SymbolSelector('depth-symbol-select', {
-            defaultSymbol: depthState.symbol,
-            onSymbolChange: (symbol, pricePrecision, tickSize) => {
-                updateDepthSymbol(symbol, pricePrecision, tickSize);
-            }
-        });
+        const baseSelect = document.getElementById('depth-base-select');
+        if (baseSelect) {
+            baseSelect.addEventListener('change', () => selectBase(baseSelect.value));
+        }
 
-        setTimeout(() => {
-            const initialSymbol = symbolSelector.getSelectedSymbol();
-            const all = symbolSelector.getAllSymbols();
-            const found = all.find(s => s.symbol === initialSymbol);
-            if (found) {
-                depthState.pricePrecision = found.pricePrecision;
-                depthState.baseTickSize = Number(found.filters.PRICE_FILTER.tickSize);
+        (async () => {
+            const bases = await fetchCommonBases();
+            if (bases.length > 0 && baseSelect) {
+                baseSelect.innerHTML = bases.map(b => `<option value="${b}" ${b === depthState.base ? 'selected' : ''}>${b}</option>`).join('');
             }
-            connectDepthPriceSSE();
-            connectDepthOrderbookSSE();
-        }, 0);
+            await selectBase(depthState.base);
+        })();
     }
 
     if (document.readyState === 'loading') {
