@@ -2,6 +2,8 @@ package org.ltk.connector.utils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
 
 public class SecurityHelper {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
@@ -28,5 +30,11 @@ public class SecurityHelper {
             hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    public static int calcOkxChecksum(String checkStr) {
+        CRC32 crc32 = new CRC32();
+        crc32.update(checkStr.getBytes(StandardCharsets.US_ASCII));
+        return (int) crc32.getValue();
     }
 }

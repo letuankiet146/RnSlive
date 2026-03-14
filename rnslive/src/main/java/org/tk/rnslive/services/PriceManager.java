@@ -32,7 +32,7 @@ public class PriceManager {
     // Configuration
     private static final int MAX_SYMBOLS = 100; // Prevent memory exhaustion
     private static final long INACTIVE_TIMEOUT_MS = 300000; // 5 minutes
-    private static final ExchangeName EXCHANGE_NAME = ExchangeName.BINANCE;
+    private static final ExchangeName DEFAULT_EXCHANGE = ExchangeName.BINANCE;
     
     public PriceManager(ExchangeService exchangeService) {
         this.exchangeService = exchangeService;
@@ -43,28 +43,40 @@ public class PriceManager {
      * Get price stream for a symbol (lazy initialization)
      */
     public Flux<PriceDto> getPriceStream(String symbol) {
-        return getOrCreatePriceStream(symbol).getPriceStream();
+        return getPriceStream(DEFAULT_EXCHANGE, symbol);
+    }
+
+    /**
+     * Get price stream for a symbol from a specific exchange
+     */
+    public Flux<PriceDto> getPriceStream(ExchangeName exchangeName, String symbol) {
+        return getOrCreatePriceStream(exchangeName, symbol).getPriceStream();
     }
     
     /**
      * Get kLines for a symbol
      */
     public Mono<List<Kline>> getKline(String symbol, String interval) {
-        return exchangeService.getKline(EXCHANGE_NAME, symbol, interval, null, null, null);
+        return getKline(DEFAULT_EXCHANGE, symbol, interval);
+    }
+
+    public Mono<List<Kline>> getKline(ExchangeName exchangeName, String symbol, String interval) {
+        return exchangeService.getKline(exchangeName, symbol, interval, null, null, null);
     }
     
     /**
      * Get or create price stream instance for symbol (thread-safe)
      */
-    private SinglePriceService getOrCreatePriceStream(String symbol) {
-        return priceStreams.computeIfAbsent(symbol, s -> {
+    private SinglePriceService getOrCreatePriceStream(ExchangeName exchangeName, String symbol) {
+        String key = exchangeName.name() + ":" + symbol;
+        return priceStreams.computeIfAbsent(key, s -> {
             if (priceStreams.size() >= MAX_SYMBOLS) {
                 LOGGER.warn("Max symbols limit reached ({}). Consider cleanup.", MAX_SYMBOLS);
                 cleanupInactivePriceStreams();
             }
             
-            LOGGER.info("Creating new price stream instance for symbol: {}", s);
-            SinglePriceService priceService = new SinglePriceService(exchangeService, s);
+            LOGGER.info("Creating new price stream instance for {}: {}", exchangeName, symbol);
+            SinglePriceService priceService = new SinglePriceService(exchangeService, exchangeName, symbol);
             priceService.start();
             return priceService;
         });

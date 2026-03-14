@@ -13,8 +13,6 @@ import reactor.core.publisher.Sinks;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.tk.rnslive.config.AppConst.EXCHANGE_NAME;
-
 /**
  * Single price stream instance for one symbol
  * Isolated state management for thread safety and performance
@@ -24,6 +22,7 @@ public class SinglePriceService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SinglePriceService.class);
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExchangeService exchangeService;
+    private final ExchangeName exchangeName;
     
     // Symbol-specific state
     private final String symbol;
@@ -33,10 +32,9 @@ public class SinglePriceService {
     // State flags
     private volatile boolean isRunning = false;
     
-    // Exchange configuration
-
-    public SinglePriceService(ExchangeService exchangeService, String symbol) {
+    public SinglePriceService(ExchangeService exchangeService, ExchangeName exchangeName, String symbol) {
         this.exchangeService = exchangeService;
+        this.exchangeName = exchangeName;
         this.symbol = symbol;
         this.priceSink = Sinks.many().replay().latest();
         this.lastAccessTime = new AtomicLong(System.currentTimeMillis());
@@ -51,11 +49,11 @@ public class SinglePriceService {
         isRunning = true;
         LOGGER.info("Starting price stream for {}", symbol);
 
-        exchangeService.subscribeMarkPrice(EXCHANGE_NAME, symbol, "1s", result -> {
+        exchangeService.subscribeMarkPrice(exchangeName, symbol, "1s", result -> {
             if (!isRunning) return;
             
             try {
-                PriceDto dto = parsePrice(EXCHANGE_NAME, result);
+                PriceDto dto = parsePrice(exchangeName, result);
                 if (dto != null) {
                     Sinks.EmitResult emitResult = priceSink.tryEmitNext(dto);
                     if (emitResult.isFailure()) {

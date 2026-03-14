@@ -1,5 +1,6 @@
 package org.tk.rnslive.controller;
 
+import org.ltk.connector.client.ExchangeName;
 import org.ltk.connector.component.Kline;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,12 +27,25 @@ public class PriceController {
         return priceManager.getPriceStream(symbol);
     }
 
+    @GetMapping(value = "/okx/stream/prices", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<PriceDto> streamOkxPrices(@RequestParam(defaultValue = "BTC-USDT-SWAP") String symbol) {
+        return priceManager.getPriceStream(ExchangeName.OKX, symbol);
+    }
+
     @GetMapping(value = "/binance/kLines", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<List<Kline>> getKline(
             @RequestParam(defaultValue = "BTCUSDT") String symbol,
             @RequestParam(defaultValue = "1h") String interval
     ) {
         return priceManager.getKline(symbol, interval);
+    }
+
+    @GetMapping(value = "/okx/kLines", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<List<Kline>> getOkxKline(
+            @RequestParam(defaultValue = "BTC-USDT-SWAP") String symbol,
+            @RequestParam(defaultValue = "1h") String interval
+    ) {
+        return priceManager.getKline(ExchangeName.OKX, symbol, interval);
     }
 
     @GetMapping(value = "/binance/prices/stats", produces = MediaType.APPLICATION_JSON_VALUE)

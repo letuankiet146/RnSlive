@@ -2,7 +2,6 @@ package org.tk.rnslive.services;
 
 import org.ltk.connector.client.ExchangeName;
 import org.ltk.connector.service.ExchangeService;
-import org.ltk.model.exchange.depth.Depth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,6 +30,7 @@ public class OrderBookManager {
     // Configuration
     private static final int MAX_SYMBOLS = 100; // Prevent memory exhaustion
     private static final long INACTIVE_TIMEOUT_MS = 300000; // 5 minutes
+    private static final ExchangeName DEFAULT_EXCHANGE = ExchangeName.BINANCE;
     
     public OrderBookManager(ExchangeService exchangeService) {
         this.exchangeService = exchangeService;
@@ -41,21 +41,26 @@ public class OrderBookManager {
      * Get orderbook stream for a symbol (lazy initialization)
      */
     public Flux<OrderBook> getOrderBookStream(String symbol) {
-        return getOrCreateOrderBook(symbol).getOrderBookStream();
+        return getOrderBookStream(DEFAULT_EXCHANGE, symbol);
+    }
+
+    public Flux<OrderBook> getOrderBookStream(ExchangeName exchangeName, String symbol) {
+        return getOrCreateOrderBook(exchangeName, symbol).getOrderBookStream();
     }
     
     /**
      * Get or create orderbook instance for symbol (thread-safe)
      */
-    private SingleOrderBookService getOrCreateOrderBook(String symbol) {
-        return orderBooks.computeIfAbsent(symbol, s -> {
+    private SingleOrderBookService getOrCreateOrderBook(ExchangeName exchangeName, String symbol) {
+        String key = exchangeName.name() + ":" + symbol;
+        return orderBooks.computeIfAbsent(key, s -> {
             if (orderBooks.size() >= MAX_SYMBOLS) {
                 LOGGER.warn("Max symbols limit reached ({}). Consider cleanup.", MAX_SYMBOLS);
                 cleanupInactiveOrderBooks();
             }
             
-            LOGGER.info("Creating new orderbook instance for symbol: {}", s);
-            SingleOrderBookService orderBook = new SingleOrderBookService(exchangeService, s);
+            LOGGER.info("Creating new orderbook instance for {}: {}", exchangeName, symbol);
+            SingleOrderBookService orderBook = new SingleOrderBookService(exchangeService, exchangeName, symbol);
             orderBook.start();
             return orderBook;
         });
