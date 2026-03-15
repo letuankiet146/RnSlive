@@ -1,8 +1,9 @@
-package org.tk.rnslive.controller;
+package org.tk.rnslive.controller.future;
 
 import org.ltk.connector.client.ExchangeName;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.tk.rnslive.model.symbol.SymbolType;
@@ -10,7 +11,6 @@ import org.tk.rnslive.services.SymbolRegistryService;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
  * Supports any number of exchanges; add new parsers and connector support to extend.
  */
 @RestController
+@RequestMapping("/future")
 public class SymbolController {
 
     private final SymbolRegistryService symbolRegistryService;
@@ -31,7 +32,7 @@ public class SymbolController {
 
     /**
      * List exchanges that have symbol data loaded for the given type.
-     * Example: GET /symbol/exchanges  or  /symbol/exchanges?type=SPOT
+     * Example: GET /future/symbol/exchanges  or  /future/symbol/exchanges?type=SPOT
      */
     @GetMapping(value = "/symbol/exchanges", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> getLoadedExchanges(
@@ -46,8 +47,8 @@ public class SymbolController {
 
     /**
      * Get exchange-specific symbol for a base asset.
-     * Example: GET /symbol?exchange=OKX&base=BTC → "BTC-USDT-SWAP"
-     *          GET /symbol?exchange=BINANCE&base=BTC → "BTCUSDT"
+     * Example: GET /future/symbol?exchange=OKX&base=BTC → "BTC-USDT-SWAP"
+     *          GET /future/symbol?exchange=BINANCE&base=BTC → "BTCUSDT"
      */
     @GetMapping(value = "/symbol", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> getSymbol(
@@ -61,7 +62,7 @@ public class SymbolController {
 
     /**
      * Check if a base exists on both given exchanges.
-     * Example: GET /symbol/exists-on-both?base=BTC&a=BINANCE&b=OKX
+     * Example: GET /future/symbol/exists-on-both?base=BTC&a=BINANCE&b=OKX
      */
     @GetMapping(value = "/symbol/exists-on-both", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> existsOnBoth(
@@ -81,7 +82,7 @@ public class SymbolController {
     /**
      * Check if a base exists on all given exchanges and return symbol per exchange.
      * When no exchanges param is provided, uses all currently loaded exchanges.
-     * Example: GET /symbol/exists-on-all?base=BTC  or  /symbol/exists-on-all?base=BTC&exchanges=BINANCE,OKX,BINGX
+     * Example: GET /future/symbol/exists-on-all?base=BTC  or  /future/symbol/exists-on-all?base=BTC&exchanges=BINANCE,OKX,BINGX
      */
     @GetMapping(value = "/symbol/exists-on-all", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> existsOnAll(
@@ -105,7 +106,7 @@ public class SymbolController {
     /**
      * List base assets that exist on all specified exchanges.
      * When no exchanges param is provided, uses all currently loaded exchanges.
-     * Example: GET /symbol/common-bases  or  /symbol/common-bases?exchanges=BINANCE,OKX,BINGX
+     * Example: GET /future/symbol/common-bases  or  /future/symbol/common-bases?exchanges=BINANCE,OKX,BINGX
      */
     @GetMapping(value = "/symbol/common-bases", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> getCommonBases(

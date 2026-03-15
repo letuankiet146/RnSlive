@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 
 @Service
 public class OKXExFutureClientImpl implements ExFutureClient {
+    private static final String DEPTH_CHANNEL = "books";
     private static final String SUBSCRIBE_MSG_FORMAT = "{\n" +
             "    \"op\":\"subscribe\",\n" +
             "    \"args\":[\n" +
@@ -48,19 +49,17 @@ public class OKXExFutureClientImpl implements ExFutureClient {
 
     @Override
     public void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
-        // Default to books (400 levels, incremental) if no specific channel is provided.
-        // If interval is provided, treat it as the desired OKX order book channel name
-        // (e.g. "books", "books5", "bbo-tbt", "books-l2-tbt", "books50-l2-tbt").
-        String channel = (interval == null || interval.isBlank()) ? "books" : interval;
+        String key = DEPTH_CHANNEL + "_" + symbol;
         String instId = symbol.toUpperCase();
-        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, channel, instId);
-        webSocket.subscribe(channel, subscribeMsg, callback);
+        String subscribeMsg = String.format(SUBSCRIBE_MSG_FORMAT, DEPTH_CHANNEL, instId);
+        webSocket.subscribe(key, subscribeMsg, callback);
     }
 
     @Override
     public void disconnectDepth(String symbol) {
         if (symbol == null) return;
-        webSocket.disconnect(symbol.toUpperCase());
+        String key = DEPTH_CHANNEL + "_" + symbol;
+        webSocket.disconnect(key);
     }
 
     @Override

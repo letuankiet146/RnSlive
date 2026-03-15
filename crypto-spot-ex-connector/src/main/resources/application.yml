@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: crypto-spot-ex-connector
+
+logging:
+  level:
+    org.tk.spot: INFO
+    reactor.netty: WARN

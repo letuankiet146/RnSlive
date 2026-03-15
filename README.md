@@ -152,11 +152,13 @@ mvn spring-boot:run
 
 ## 📡 API Endpoints
 
+Future exchange endpoints are under the `/future` prefix.
+
 ### OrderBook Endpoints
 
 #### Stream OrderBook (SSE)
 ```http
-GET /binance/stream/orderbook?symbol={SYMBOL}
+GET /future/binance/stream/orderbook?symbol={SYMBOL}
 Content-Type: text/event-stream
 ```
 
@@ -202,7 +204,7 @@ Returns raw depth data from Binance API.
 
 #### Stream Prices (SSE)
 ```http
-GET /binance/stream/prices?symbol={SYMBOL}
+GET /future/binance/stream/prices?symbol={SYMBOL}
 Content-Type: text/event-stream
 ```
 
@@ -220,7 +222,7 @@ Content-Type: text/event-stream
 
 #### Get Candlestick Data
 ```http
-GET /binance/kLines?symbol={SYMBOL}&interval={INTERVAL}
+GET /future/binance/kLines?symbol={SYMBOL}&interval={INTERVAL}
 Content-Type: application/json
 ```
 
@@ -245,7 +247,7 @@ Content-Type: application/json
 
 #### Get Price Statistics
 ```http
-GET /binance/prices/stats?symbol={SYMBOL}
+GET /future/binance/prices/stats?symbol={SYMBOL}
 Content-Type: application/json
 ```
 

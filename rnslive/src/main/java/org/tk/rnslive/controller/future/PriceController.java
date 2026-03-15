@@ -1,9 +1,10 @@
-package org.tk.rnslive.controller;
+package org.tk.rnslive.controller.future;
 
 import org.ltk.connector.client.ExchangeName;
 import org.ltk.connector.component.Kline;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.tk.rnslive.dto.PriceDto;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/future")
 public class PriceController {
     private final PriceManager priceManager;
 

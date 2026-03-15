@@ -301,7 +301,7 @@
 
         async function loadKLines(interval) {
             try {
-                const response = await fetch(`http://localhost:8080/binance/kLines?symbol=${currentSymbol}&interval=${interval}`);
+                const response = await fetch(`http://localhost:8080/future/binance/kLines?symbol=${currentSymbol}&interval=${interval}`);
                 const kLines = await response.json();
 
                 state.allCandles = kLines.map(kline => ({
@@ -321,7 +321,7 @@
         }
 
         function connectPriceSSE() {
-            priceEventSource = new EventSource(`http://localhost:8080/binance/stream/prices?symbol=${currentSymbol}`);
+            priceEventSource = new EventSource(`http://localhost:8080/future/binance/stream/prices?symbol=${currentSymbol}`);
 
             priceEventSource.onmessage = (event) => {
                 try {
@@ -345,7 +345,7 @@
         }
 
         function connectOrderbookSSE() {
-            orderbookEventSource = new EventSource(`http://localhost:8080/binance/stream/orderbook?symbol=${currentSymbol}`);
+            orderbookEventSource = new EventSource(`http://localhost:8080/future/binance/stream/orderbook?symbol=${currentSymbol}`);
 
             orderbookEventSource.onmessage = (event) => {
                 try {

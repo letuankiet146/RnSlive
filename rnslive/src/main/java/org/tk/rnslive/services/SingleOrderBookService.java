@@ -308,6 +308,7 @@ public class SingleOrderBookService {
         }
         okxLastSeqId = -1;
 
+
         if (exchangeName == ExchangeName.BINANCE) {
             initializeOrderBook();
         } else if (exchangeName == ExchangeName.OKX) {
@@ -315,6 +316,7 @@ public class SingleOrderBookService {
             // connector reconnects and resubscribes; the new connection will send a fresh snapshot.
             LOGGER.info("Disconnecting OKX depth WS for {} to force reconnect and fresh snapshot", symbol);
             exchangeService.disconnectDepth(exchangeName, symbol);
+            exchangeService.subscribeDepth(exchangeName, symbol, null, this::bufferDepthUpdate);
         } else {
             LOGGER.info("Waiting for next WS snapshot to reinitialize orderbook for {}", symbol);
         }

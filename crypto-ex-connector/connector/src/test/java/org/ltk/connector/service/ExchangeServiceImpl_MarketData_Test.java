@@ -52,7 +52,7 @@ public class ExchangeServiceImpl_MarketData_Test {
     @Test
     public void testSubscribeDepth_OKX() throws InterruptedException {
         exchangeServiceImpl.subscribeDepth(ExchangeName.OKX, "BTC-usdt-swap", "books", System.out::println);
-        TradeHelper.delay(2, TimeUnit.SECONDS);
+        TradeHelper.delay(1, TimeUnit.SECONDS);
     }
 
     @Test

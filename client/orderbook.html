@@ -182,7 +182,7 @@
             timestampEl.textContent = '-';
 
             // Connect to new symbol
-            eventSource = new EventSource(`http://localhost:8080/binance/stream/orderbook?symbol=${symbol}`);
+            eventSource = new EventSource(`http://localhost:8080/future/binance/stream/orderbook?symbol=${symbol}`);
 
             eventSource.onopen = () => {
                 statusEl.textContent = 'Connected';

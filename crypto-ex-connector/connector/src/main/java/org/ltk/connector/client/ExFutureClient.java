@@ -54,13 +54,8 @@ public interface ExFutureClient {
     default void subscribeDepth(String symbol, String interval, Consumer<String> callback) {
         throw new RuntimeException("Exchange not supported");
     }
-
-    /**
-     * Manually interrupt the depth WebSocket for the given symbol so it can reconnect and send a fresh snapshot.
-     * No-op for exchanges that do not support it.
-     */
     default void disconnectDepth(String symbol) {
-        // no-op by default
+        throw new RuntimeException("Exchange not supported");
     }
     default void subscribeTradeDetail(String symbol, String interval, Consumer<String> callback) {
         throw new RuntimeException("Exchange not supported");
