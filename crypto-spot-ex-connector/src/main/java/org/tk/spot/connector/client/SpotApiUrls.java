@@ -12,8 +12,14 @@ public final class SpotApiUrls {
 
     private SpotApiUrls() {}
 
+    /** Binance Spot REST base (ExchangeInfo, etc.). */
+    public static final String BINANCE_SPOT_REST = "https://api.binance.com";
+
     /** Binance Spot WebSocket base. Stream: &lt;symbol&gt;@ticker (e.g. btcusdt@ticker). */
     public static final String BINANCE_SPOT_WS = "wss://stream.binance.com:9443/ws";
+
+    /** OKX REST base (public instruments, etc.). */
+    public static final String OKX_REST = "https://www.okx.com";
 
     /** OKX Public WebSocket (spot tickers channel: tickers, instId e.g. BTC-USDT). */
             public static final String OKX_PUBLIC_WS = "wss://ws.okx.com:8443/ws/v5/public";

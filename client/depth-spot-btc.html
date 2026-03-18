@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depth Viewer</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .depth-page-container {
+            display: flex;
+            height: 100vh;
+            background: #0b1020;
+            color: #e0e0e0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .depth-panel-wrapper {
+            display: flex;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .depth-config-panel {
+            width: 320px;
+            min-width: 320px;
+            padding: 18px 48px 18px 22px;
+            border-right: 1px solid #181b2f;
+            background: radial-gradient(circle at top left, #1d2438 0, #111427 45%, #090d1a 100%);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            transition: width 0.22s ease, min-width 0.22s ease, padding 0.22s ease, border-color 0.22s ease, opacity 0.15s ease, visibility 0.15s ease;
+            overflow: hidden;
+        }
+        .depth-panel-wrapper.collapsed .depth-config-panel {
+            width: 0;
+            min-width: 0;
+            padding-left: 0;
+            padding-right: 0;
+            border-right-width: 0;
+            visibility: hidden;
+            opacity: 0;
+            background: transparent;
+            box-shadow: none;
+            transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease, border-color 0.2s ease, opacity 0.12s ease, visibility 0.12s ease;
+        }
+        .depth-panel-wrapper.collapsed {
+            min-width: 0;
+            width: 0;
+            overflow: visible;
+        }
+        .depth-panel-wrapper.collapsed .depth-panel-toggle {
+            right: auto;
+            left: 0;
+            transform: translateY(-50%);
+        }
+        .depth-panel-toggle {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -50%);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #3d4670;
+            background: linear-gradient(180deg, #1d2438 0, #111427 100%);
+            cursor: pointer;
+            color: #8f9bbd;
+            font-size: 14px;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            z-index: 1;
+        }
+        .depth-panel-toggle:hover {
+            background: #222842;
+            color: #c6d0ff;
+            border-color: #5a6a9a;
+        }
+        .depth-panel-toggle .depth-panel-toggle-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            width: 1em;
+            height: 1em;
+            transition: transform 0.2s ease;
+            transform-origin: center center;
+        }
+        .depth-panel-wrapper:not(.collapsed) .depth-panel-toggle .depth-panel-toggle-icon {
+            transform: rotate(0deg);
+        }
+        .depth-panel-wrapper.collapsed .depth-panel-toggle .depth-panel-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .depth-config-panel h2 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #f5f5ff;
+        }
+        .depth-config-section {
+            margin-top: 4px;
+        }
+        .depth-config-section h3 {
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #8f9bbd;
+        }
+        .depth-config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 13px;
+        }
+        .depth-config-item label {
+            color: #9da7c8;
+        }
+        .depth-config-item span {
+            font-weight: 500;
+            color: #f1f3ff;
+        }
+        .depth-config-item span.depth-price-resistance {
+            color: #ff8a8a;
+        }
+        .depth-config-item span.depth-price-support {
+            color: #51cf66;
+        }
+        .tick-level-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 6px;
+        }
+        .tick-level-btn {
+            padding: 6px 0;
+            border-radius: 6px;
+            border: 1px solid #303652;
+            background: #15192b;
+            color: #c6d0ff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
+        }
+        .tick-level-btn:hover {
+            background: #222842;
+            border-color: #3d4670;
+        }
+        .tick-level-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #22c1c3);
+            border-color: #3b82f6;
+            color: white;
+        }
+        .depth-base-select-wrapper {
+            position: relative;
+        }
+        .depth-base-select-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #2a2a3e;
+            color: #e0e0e0;
+            border: 1px solid #3a3a4e;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .depth-base-select-btn:hover {
+            border-color: #4a4a6e;
+            background: #323248;
+        }
+        .depth-base-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #1d2438;
+            border: 1px solid #2a2a4e;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            overflow: hidden;
+        }
+        .depth-base-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 12px;
+            border: none;
+            border-bottom: 1px solid #2a2a4e;
+            background: #15192b;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        .depth-base-search:focus {
+            outline: none;
+        }
+        .depth-base-search::placeholder {
+            color: #6b7594;
+        }
+        .depth-base-options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .depth-base-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #c6d0ff;
+        }
+        .depth-base-option:hover {
+            background: #2a2a4e;
+        }
+        .depth-base-option.no-results {
+            color: #848e9c;
+            text-align: center;
+            cursor: default;
+        }
+        .depth-main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px 16px;
+        }
+        .depth-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .depth-header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #f5f5ff;
+        }
+        .depth-header-subtitle {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: #7f8ab0;
+        }
+        .depth-current-price-tag {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #2a2a4e;
+            background: #15192b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+        .depth-price-pills {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .depth-price-pill {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            min-width: 0;
+            font-size: 13px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .depth-price-pill:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .depth-price-pill .depth-price-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0;
+            flex: 1;
+        }
+        .depth-price-checkbox {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: #3b82f6;
+            margin: 0;
+        }
+        .depth-price-pill:not(:last-child) {
+            border-bottom: 1px solid #2a2a4e;
+        }
+        .depth-price-pill .depth-price-value {
+            color: #e8ecff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+        }
+        .depth-price-pill .depth-price-label {
+            color: #8f9bbd;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .depth-price-pill.lower {
+            background: rgba(81, 207, 102, 0.08);
+            border-left: 2px solid rgba(81, 207, 102, 0.6);
+        }
+        .depth-price-pill.higher {
+            background: rgba(255, 107, 107, 0.08);
+            border-left: 2px solid rgba(255, 107, 107, 0.5);
+        }
+        .depth-price-pill.single {
+            border-left: 2px solid rgba(148, 163, 255, 0.5);
+        }
+        .depth-current-price-tag .depth-price-diff {
+            border-top: 1px solid #2a2a4e;
+        }
+        .depth-price-diff {
+            padding: 5px 10px;
+            background: rgba(59, 130, 246, 0.06);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .depth-price-diff .depth-diff-label {
+            color: #8f9bbd;
+        }
+        .depth-price-diff .depth-diff-value {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .depth-price-diff .depth-diff-value.positive {
+            color: #ff6b6b;
+        }
+        .depth-price-diff .depth-diff-value.negative {
+            color: #51cf66;
+        }
+        .depth-chart-shell {
+            position: relative;
+            flex: 1;
+            border-radius: 10px;
+            background: radial-gradient(circle at top, #15192b 0, #050814 60%, #050612 100%);
+            border: 1px solid #181c30;
+            overflow: hidden;
+        }
+        #depth-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .depth-axis-label {
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            font-size: 11px;
+            color: #7c86aa;
+        }
+        .depth-axis-label-x {
+            position: absolute;
+            right: 14px;
+            bottom: 10px;
+            font-size: 11px;
+            color: #7c86aa;
+        }
+        .depth-legend {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            color: #9aa4c7;
+        }
+        .depth-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .depth-legend-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+        .depth-legend-swatch.bid {
+            background: linear-gradient(90deg, rgba(81, 207, 102, 0.8), rgba(81, 207, 102, 0.3));
+        }
+        .depth-legend-swatch.ask {
+            background: linear-gradient(90deg, rgba(255, 107, 107, 0.8), rgba(255, 107, 107, 0.3));
+        }
+        .depth-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+<div class="depth-page-container">
+    <div class="depth-panel-wrapper" id="depth-panel-wrapper">
+        <button type="button" class="depth-panel-toggle" id="depth-panel-toggle" title="Open / close control panel" aria-label="Toggle control panel">
+            <span class="depth-panel-toggle-icon">◀</span>
+        </button>
+        <aside class="depth-config-panel" id="depth-config-panel">
+            <h2>Depth Control</h2>
+
+        <div class="depth-config-section">
+            <h3>Current Price</h3>
+            <div class="depth-current-price-tag" id="depth-header-prices"></div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Base (BINANCE + OKX)</h3>
+            <div class="depth-base-select-wrapper" id="depth-base-select-wrapper">
+                <button type="button" class="depth-base-select-btn" id="depth-base-select-btn">
+                    <span id="depth-base-select-label">BTC</span>
+                    <span>▼</span>
+                </button>
+                <div class="depth-base-dropdown" id="depth-base-dropdown">
+                    <input type="text" class="depth-base-search" id="depth-base-search" placeholder="Search base..." autocomplete="off" />
+                    <div class="depth-base-options" id="depth-base-options"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Orderbook Tick Group</h3>
+            <div class="tick-level-buttons" id="tick-level-buttons">
+                <button class="tick-level-btn active" data-level="1">x1</button>
+                <button class="tick-level-btn" data-level="2">x10</button>
+                <button class="tick-level-btn" data-level="3">x100</button>
+                <button class="tick-level-btn" data-level="4">x1K</button>
+                <button class="tick-level-btn" data-level="5">x10K</button>
+            </div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Last Price</h3>
+            <div class="depth-config-item">
+                <label>Binance</label>
+                <span id="depth-last-binance">--</span>
+            </div>
+            <div class="depth-config-item">
+                <label>OKX</label>
+                <span id="depth-last-okx">--</span>
+            </div>
+        </div>
+
+        <div class="depth-config-section">
+            <h3>Status</h3>
+            <div class="depth-config-item">
+                <label>Binance Price</label>
+                <span id="depth-status-binance-price">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>Binance Orderbook</label>
+                <span id="depth-status-binance-ob">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>OKX Price</label>
+                <span id="depth-status-okx-price">Disconnected</span>
+            </div>
+            <div class="depth-config-item">
+                <label>OKX Orderbook</label>
+                <span id="depth-status-okx-ob">Disconnected</span>
+            </div>
+        </div>
+        </aside>
+    </div>
+
+    <main class="depth-main-area">
+        <div class="depth-header">
+            <div>
+                <div class="depth-header-title">Orderbook Depth</div>
+                <div class="depth-header-subtitle">Per-symbol aggregated depth by price bucket</div>
+            </div>
+        </div>
+
+        <div class="depth-chart-shell">
+            <canvas id="depth-canvas"></canvas>
+            <div class="depth-axis-label">Qty</div>
+            <div class="depth-axis-label-x">Price</div>
+            <div class="depth-legend" style="flex-wrap: wrap; gap: 8px;">
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch bid"></div>
+                    <span>Binance Bids</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch ask"></div>
+                    <span>Binance Asks</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch" style="background: rgba(0, 188, 212, 0.8);"></div>
+                    <span>OKX Bids</span>
+                </div>
+                <div class="depth-legend-item">
+                    <div class="depth-legend-swatch" style="background: rgba(255, 152, 0, 0.8);"></div>
+                    <span>OKX Asks</span>
+                </div>
+            </div>
+        </div>
+        <div class="depth-tooltip" id="depth-tooltip"></div>
+    </main>
+</div>
+
+<script>
+    const DEPTH_TICK_LEVEL_MULTIPLIERS = [1, 10, 100, 1000, 10000];
+    const HF_SPOT_ENGINE_BASE_URL = 'http://localhost:8081/spot';
+    const FUTURES_BASE_URL = 'http://localhost:8080/spot';
+    const BINANCE_EXCHANGE_INFO_URL = 'https://api.binance.com/api/v3/exchangeInfo';
+    const DEPTH_EXCHANGES = ['BINANCE', 'OKX'];
+
+    const depthState = {
+        base: 'BTC',
+        symbolsByExchange: { BINANCE: 'BTCUSDT', OKX: 'BTC-USDT-SWAP' },
+        pricePrecision: 2,
+        quantityPrecision: 4,
+        baseTickSize: 0.5,
+        tickLevelIndex: 0,
+        exchanges: {},
+        priceStreams: {},
+        orderbookStreams: {},
+        viewHalfRange: null,
+        lastAggMinPrice: null,
+        lastAggMaxPrice: null,
+        linkedExchanges: new Set(['BINANCE', 'OKX']),
+    };
+
+    function decimalPlacesFromStep(stepStr) {
+        const s = String(stepStr).trim();
+        const i = s.indexOf('.');
+        if (i === -1) return 0;
+        const after = s.slice(i + 1).replace(/0+$/, '');
+        return after.length;
+    }
+
+    async function fetchBinanceSymbolInfo(symbol) {
+        if (!symbol) return null;
+        try {
+            const r = await fetch(BINANCE_EXCHANGE_INFO_URL);
+            const data = await r.json();
+            const sym = (data.symbols || []).find(s => (s.symbol || '').toUpperCase() === symbol.toUpperCase());
+            if (!sym || !Array.isArray(sym.filters)) return null;
+            const priceFilter = sym.filters.find(f => f.filterType === 'PRICE_FILTER');
+            const lotFilter = sym.filters.find(f => f.filterType === 'LOT_SIZE');
+            const tickSizeStr = priceFilter && priceFilter.tickSize ? priceFilter.tickSize : '0.01';
+            const stepSizeStr = lotFilter && lotFilter.stepSize ? lotFilter.stepSize : '0.0001';
+            const baseTickSize = parseFloat(tickSizeStr);
+            const pricePrecision = decimalPlacesFromStep(tickSizeStr);
+            const quantityPrecision = decimalPlacesFromStep(stepSizeStr);
+            return {
+                baseTickSize: Number.isFinite(baseTickSize) ? baseTickSize : 0.01,
+                pricePrecision: Math.max(0, Math.min(pricePrecision, 12)),
+                quantityPrecision: Math.max(0, Math.min(quantityPrecision, 12)),
+            };
+        } catch (e) {
+            console.error('Fetch Binance exchange info failed', e);
+            return null;
+        }
+    }
+
+    DEPTH_EXCHANGES.forEach(ex => {
+        depthState.exchanges[ex] = { currentPrice: null, orderbook: { bids: {}, asks: {} } };
+        depthState.priceStreams[ex] = null;
+        depthState.orderbookStreams[ex] = null;
+    });
+
+    let depthCanvas;
+    let depthCtx;
+    let depthBars = [];
+
+    function getBucketSize() {
+        const multiplier = DEPTH_TICK_LEVEL_MULTIPLIERS[depthState.tickLevelIndex] || 1;
+        return depthState.baseTickSize * multiplier;
+    }
+
+    function aggregateDepthForExchange(exchange) {
+        const bucketSize = getBucketSize();
+        const orderbook = depthState.exchanges[exchange]?.orderbook || { bids: {}, asks: {} };
+        if (!bucketSize || !Number.isFinite(bucketSize)) {
+            return { bids: new Map(), asks: new Map(), minPrice: null, maxPrice: null };
+        }
+
+        const bidsAgg = new Map();
+        const asksAgg = new Map();
+        let minPrice = Number.POSITIVE_INFINITY;
+        let maxPrice = Number.NEGATIVE_INFINITY;
+
+        Object.entries(orderbook.bids || {}).forEach(([priceStr, qty]) => {
+            const price = parseFloat(priceStr);
+            if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
+            const bucketIndex = Math.floor(price / bucketSize);
+            const bucketPrice = bucketIndex * bucketSize;
+            bidsAgg.set(bucketPrice, (bidsAgg.get(bucketPrice) || 0) + qty);
+            minPrice = Math.min(minPrice, bucketPrice);
+            maxPrice = Math.max(maxPrice, bucketPrice);
+        });
+
+        Object.entries(orderbook.asks || {}).forEach(([priceStr, qty]) => {
+            const price = parseFloat(priceStr);
+            if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) return;
+            const bucketIndex = Math.floor(price / bucketSize);
+            const bucketPrice = bucketIndex * bucketSize;
+            asksAgg.set(bucketPrice, (asksAgg.get(bucketPrice) || 0) + qty);
+            minPrice = Math.min(minPrice, bucketPrice);
+            maxPrice = Math.max(maxPrice, bucketPrice);
+        });
+
+        if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
+            return { bids: bidsAgg, asks: asksAgg, minPrice: null, maxPrice: null };
+        }
+        return { bids: bidsAgg, asks: asksAgg, minPrice, maxPrice };
+    }
+
+    function getMergedPriceRange() {
+        let minP = Number.POSITIVE_INFINITY;
+        let maxP = Number.NEGATIVE_INFINITY;
+        DEPTH_EXCHANGES.forEach(ex => {
+            const r = aggregateDepthForExchange(ex);
+            if (r.minPrice != null) minP = Math.min(minP, r.minPrice);
+            if (r.maxPrice != null) maxP = Math.max(maxP, r.maxPrice);
+        });
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+        [binancePrice, okxPrice].forEach(p => {
+            if (Number.isFinite(p)) { minP = Math.min(minP, p); maxP = Math.max(maxP, p); }
+        });
+        if (!Number.isFinite(minP) || !Number.isFinite(maxP)) return { minPrice: null, maxPrice: null };
+        depthState.lastAggMinPrice = minP;
+        depthState.lastAggMaxPrice = maxP;
+        return { minPrice: minP, maxPrice: maxP };
+    }
+
+    function getCenterPrice() {
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+        const prices = [binancePrice, okxPrice].filter(p => Number.isFinite(p));
+        if (prices.length === 0) return null;
+        return prices.reduce((a, b) => a + b, 0) / prices.length;
+    }
+
+    function resizeDepthCanvas() {
+        if (!depthCanvas) return;
+        const rect = depthCanvas.getBoundingClientRect();
+        depthCanvas.width = rect.width * window.devicePixelRatio;
+        depthCanvas.height = rect.height * window.devicePixelRatio;
+        if (depthCtx) {
+            depthCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+        }
+        drawDepthChart();
+    }
+
+    const EXCHANGE_COLORS = {
+        BINANCE: { bid: ['rgba(81, 207, 102, 0.85)', 'rgba(81, 207, 102, 0.25)'], ask: ['rgba(255, 107, 107, 0.9)', 'rgba(255, 107, 107, 0.28)'] },
+        OKX: { bid: ['rgba(0, 188, 212, 0.85)', 'rgba(0, 188, 212, 0.25)'], ask: ['rgba(255, 152, 0, 0.9)', 'rgba(255, 152, 0, 0.28)'] },
+    };
+
+    function drawDepthChart() {
+        if (!depthCtx || !depthCanvas) return;
+
+        const width = depthCanvas.clientWidth;
+        const height = depthCanvas.clientHeight;
+        if (!width || !height) return;
+
+        depthCtx.clearRect(0, 0, width, height);
+
+        const centerPrice = getCenterPrice();
+        const { minPrice, maxPrice } = getMergedPriceRange();
+        if (centerPrice == null || minPrice == null || maxPrice == null) {
+            return;
+        }
+
+        depthBars = [];
+
+        const paddingLeft = 40;
+        const paddingRight = 30;
+        const paddingTop = 24;
+        const paddingBottom = 30;
+
+        const plotWidth = width - paddingLeft - paddingRight;
+        const plotHeight = height - paddingTop - paddingBottom;
+        if (plotWidth <= 0 || plotHeight <= 0) return;
+        const fullRange = maxPrice - minPrice || 1;
+
+        let halfRange = depthState.viewHalfRange;
+        if (!halfRange) {
+            halfRange = fullRange / 2 || (getBucketSize() * 50);
+            const minHalf = getBucketSize() * 5;
+            if (halfRange < minHalf) halfRange = minHalf;
+            depthState.viewHalfRange = halfRange;
+        }
+
+        let viewMin = centerPrice - halfRange;
+        let viewMax = centerPrice + halfRange;
+        if (viewMin === viewMax) {
+            viewMin -= getBucketSize() * 10;
+            viewMax += getBucketSize() * 10;
+        }
+        const priceRange = viewMax - viewMin || 1;
+
+        function xCoord(price) {
+            return paddingLeft + ((price - viewMin) / priceRange) * plotWidth;
+        }
+
+        const bucketSize = getBucketSize();
+        const halfBarWidth = Math.max(1, (bucketSize / priceRange) * plotWidth * 0.22);
+
+        let globalMaxQty = 0;
+        const allBucketsByExchange = [];
+
+        DEPTH_EXCHANGES.forEach(exchange => {
+            const { bids, asks } = aggregateDepthForExchange(exchange);
+            const exPrice = depthState.exchanges[exchange]?.currentPrice;
+            if (exPrice == null) return;
+
+            const bidBuckets = Array.from(bids.entries())
+                .map(([price, qty]) => ({ price, qty }))
+                .filter(b => b.price <= exPrice && b.price >= viewMin);
+            bidBuckets.sort((a, b) => b.price - a.price);
+            let running = 0;
+            bidBuckets.forEach(b => { running += b.qty; b.cumQty = running; });
+
+            const askBuckets = Array.from(asks.entries())
+                .map(([price, qty]) => ({ price, qty }))
+                .filter(a => a.price >= exPrice && a.price <= viewMax);
+            askBuckets.sort((a, b) => a.price - b.price);
+            running = 0;
+            askBuckets.forEach(a => { running += a.qty; a.cumQty = running; });
+
+            bidBuckets.forEach(b => { if (b.cumQty > globalMaxQty) globalMaxQty = b.cumQty; });
+            askBuckets.forEach(a => { if (a.cumQty > globalMaxQty) globalMaxQty = a.cumQty; });
+            allBucketsByExchange.push({ exchange, bidBuckets, askBuckets });
+        });
+
+        if (globalMaxQty <= 0) return;
+
+        function barHeightForQty(qty) {
+            return (qty / globalMaxQty) * plotHeight;
+        }
+
+        // Vertical lines: Binance and OKX current price
+        DEPTH_EXCHANGES.forEach((exchange, i) => {
+            const exPrice = depthState.exchanges[exchange]?.currentPrice;
+            if (!Number.isFinite(exPrice)) return;
+            const x = xCoord(exPrice);
+            depthCtx.save();
+            depthCtx.strokeStyle = exchange === 'BINANCE' ? 'rgba(81, 207, 102, 0.7)' : 'rgba(0, 188, 212, 0.7)';
+            depthCtx.setLineDash([4, 4]);
+            depthCtx.lineWidth = 1.5;
+            depthCtx.beginPath();
+            depthCtx.moveTo(x, paddingTop);
+            depthCtx.lineTo(x, paddingTop + plotHeight);
+            depthCtx.stroke();
+            depthCtx.restore();
+        });
+
+        // Axes
+        depthCtx.save();
+        depthCtx.strokeStyle = 'rgba(50, 60, 100, 0.9)';
+        depthCtx.lineWidth = 1;
+        depthCtx.font = '10px system-ui';
+        depthCtx.fillStyle = '#7c86aa';
+
+        const yTicks = 4;
+        for (let i = 0; i <= yTicks; i++) {
+            const t = i / yTicks;
+            const y = paddingTop + plotHeight - t * plotHeight;
+            const qty = t * globalMaxQty;
+            depthCtx.globalAlpha = 0.3;
+            depthCtx.beginPath();
+            depthCtx.moveTo(paddingLeft, y);
+            depthCtx.lineTo(paddingLeft + plotWidth, y);
+            depthCtx.stroke();
+            depthCtx.globalAlpha = 1;
+            depthCtx.fillText(qty.toFixed(depthState.quantityPrecision), 4, y + 3);
+        }
+
+        const xTicks = 6;
+        for (let i = 0; i <= xTicks; i++) {
+            const t = i / xTicks;
+            const price = viewMin + t * priceRange;
+            const x = paddingLeft + t * plotWidth;
+            depthCtx.globalAlpha = 0.18;
+            depthCtx.beginPath();
+            depthCtx.moveTo(x, paddingTop);
+            depthCtx.lineTo(x, paddingTop + plotHeight);
+            depthCtx.stroke();
+            depthCtx.globalAlpha = 1;
+            const label = price.toFixed(depthState.pricePrecision);
+            const textWidth = depthCtx.measureText(label).width;
+            depthCtx.fillText(label, x - textWidth / 2, height - 6);
+        }
+        depthCtx.restore();
+
+        function drawBuckets(bucketArray, colorStart, colorEnd, side, exchange) {
+            depthCtx.save();
+            const gradientHeight = plotHeight;
+            bucketArray.forEach(bucket => {
+                const bucketPrice = bucket.price;
+                const cumQty = bucket.cumQty;
+                if (!Number.isFinite(bucketPrice) || !Number.isFinite(cumQty) || cumQty <= 0) return;
+                const bucketX = xCoord(bucketPrice);
+                const barHeight = barHeightForQty(cumQty);
+                const x = bucketX - halfBarWidth;
+                const y = paddingTop + (plotHeight - barHeight);
+
+                const gradient = depthCtx.createLinearGradient(x, paddingTop, x + halfBarWidth * 2, paddingTop + gradientHeight);
+                gradient.addColorStop(0, colorStart);
+                gradient.addColorStop(1, colorEnd);
+                depthCtx.fillStyle = gradient;
+                depthCtx.fillRect(x, y, halfBarWidth * 2, barHeight);
+
+                depthBars.push({ x, y, width: halfBarWidth * 2, height: barHeight, price: bucketPrice, cumQty: bucket.cumQty, side, exchange });
+            });
+            depthCtx.restore();
+        }
+
+        allBucketsByExchange.forEach(({ exchange, bidBuckets, askBuckets }) => {
+            const colors = EXCHANGE_COLORS[exchange];
+            if (!colors) return;
+            drawBuckets(bidBuckets, colors.bid[0], colors.bid[1], 'bid', exchange);
+            drawBuckets(askBuckets, colors.ask[0], colors.ask[1], 'ask', exchange);
+        });
+    }
+
+    function disconnectAllStreams() {
+        DEPTH_EXCHANGES.forEach(ex => {
+            if (depthState.priceStreams[ex]) {
+                depthState.priceStreams[ex].close();
+                depthState.priceStreams[ex] = null;
+            }
+            if (depthState.orderbookStreams[ex]) {
+                depthState.orderbookStreams[ex].close();
+                depthState.orderbookStreams[ex] = null;
+            }
+        });
+    }
+
+    function connectDepthPriceSSE(exchange) {
+        if (depthState.priceStreams[exchange]) {
+            depthState.priceStreams[exchange].close();
+            depthState.priceStreams[exchange] = null;
+        }
+        const symbol = depthState.symbolsByExchange[exchange];
+        if (!symbol) return;
+
+        const statusId = exchange === 'BINANCE' ? 'depth-status-binance-price' : 'depth-status-okx-price';
+        const statusEl = document.getElementById(statusId);
+        const url = `${FUTURES_BASE_URL}/${exchange.toLowerCase()}/stream/prices?symbol=${encodeURIComponent(symbol)}`;
+        const es = new EventSource(url);
+        depthState.priceStreams[exchange] = es;
+
+        es.onopen = () => {
+            if (statusEl) { statusEl.textContent = 'Connected'; statusEl.style.color = '#26a69a'; }
+        };
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleDepthPriceUpdate(data, exchange);
+            } catch (e) { console.error('Depth price SSE parse error', e); }
+        };
+        es.onerror = () => {
+            if (statusEl) { statusEl.textContent = 'Disconnected'; statusEl.style.color = '#ef5350'; }
+            es.close();
+            setTimeout(() => connectDepthPriceSSE(exchange), 5000);
+        };
+    }
+
+    function connectDepthOrderbookSSE(exchange) {
+        if (depthState.orderbookStreams[exchange]) {
+            depthState.orderbookStreams[exchange].close();
+            depthState.orderbookStreams[exchange] = null;
+        }
+        const symbol = depthState.symbolsByExchange[exchange];
+        if (!symbol) return;
+
+        const statusId = exchange === 'BINANCE' ? 'depth-status-binance-ob' : 'depth-status-okx-ob';
+        const statusEl = document.getElementById(statusId);
+        const url = `${HF_SPOT_ENGINE_BASE_URL}/${exchange.toLowerCase()}/stream/orderbook?symbol=${encodeURIComponent(symbol)}`;
+        const es = new EventSource(url);
+        depthState.orderbookStreams[exchange] = es;
+
+        es.onopen = () => {
+            if (statusEl) { statusEl.textContent = 'Connected'; statusEl.style.color = '#26a69a'; }
+        };
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleDepthOrderbookUpdate(data, exchange);
+            } catch (e) { console.error('Depth orderbook SSE parse error', e); }
+        };
+        es.onerror = () => {
+            if (statusEl) { statusEl.textContent = 'Disconnected'; statusEl.style.color = '#ef5350'; }
+            es.close();
+            setTimeout(() => connectDepthOrderbookSSE(exchange), 5000);
+        };
+    }
+
+    function connectAllStreams() {
+        DEPTH_EXCHANGES.forEach(ex => {
+            connectDepthPriceSSE(ex);
+            connectDepthOrderbookSSE(ex);
+        });
+    }
+
+    function updateHeaderPriceTags() {
+        const container = document.getElementById('depth-header-prices');
+        if (!container) return;
+
+        const p = depthState.pricePrecision;
+        const binancePrice = depthState.exchanges.BINANCE?.currentPrice;
+        const okxPrice = depthState.exchanges.OKX?.currentPrice;
+
+        const items = [
+            { exchange: 'BINANCE', price: binancePrice },
+            { exchange: 'OKX', price: okxPrice },
+        ].sort((a, b) => {
+            const va = Number.isFinite(a.price) ? a.price : -Infinity;
+            const vb = Number.isFinite(b.price) ? b.price : -Infinity;
+            return va - vb;
+        });
+
+        const hasBoth = Number.isFinite(binancePrice) && Number.isFinite(okxPrice);
+        const lowPrice = hasBoth ? Math.min(binancePrice, okxPrice) : null;
+        const highPrice = hasBoth ? Math.max(binancePrice, okxPrice) : null;
+        const linked = depthState.linkedExchanges;
+        const isLinked = linked.size === 2;
+
+        const pillsHtml = items.map(({ exchange, price }) => {
+            const display = Number.isFinite(price) ? `$${Number(price).toFixed(p)}` : '--';
+            let pillClass = 'depth-price-pill';
+            if (hasBoth) {
+                if (price <= lowPrice) pillClass += ' lower';
+                else if (price >= highPrice) pillClass += ' higher';
+            } else {
+                pillClass += ' single';
+            }
+            const checked = linked.has(exchange) ? ' checked' : '';
+            const id = 'depth-price-check-' + exchange;
+            return `<label class="${pillClass}" for="${id}"><input type="checkbox" id="${id}" class="depth-price-checkbox" data-exchange="${exchange}"${checked} title="Tick to compare (max 2)"><div class="depth-price-content"><span class="depth-price-value">${display}</span><span class="depth-price-label">${exchange}</span></div></label>`;
+        }).join('');
+
+        let diffHtml = '';
+        if (isLinked && hasBoth && lowPrice > 0) {
+            const pctDiff = ((highPrice - lowPrice) / lowPrice) * 100;
+            const higherExchange = binancePrice >= okxPrice ? 'BINANCE' : 'OKX';
+            const lowerExchange = binancePrice < okxPrice ? 'BINANCE' : 'OKX';
+            const diffClass = pctDiff >= 0 ? 'positive' : 'negative';
+            const diffSign = pctDiff >= 0 ? '+' : '';
+            diffHtml = `<div class="depth-price-diff"><span class="depth-diff-label">Difference</span><span class="depth-diff-value ${diffClass}">${diffSign}${pctDiff.toFixed(4)}%</span><span class="depth-diff-label">( ${lowerExchange} < ${higherExchange} )</span></div>`;
+        }
+
+        container.innerHTML = `<div class="depth-price-pills">${pillsHtml}</div>` + diffHtml;
+    }
+
+    function handleDepthPriceUpdate(data, exchange) {
+        if (!data || typeof data.middle === 'undefined') return;
+        if (!depthState.exchanges[exchange]) return;
+
+        depthState.exchanges[exchange].currentPrice = data.middle;
+
+        const p = depthState.pricePrecision;
+        const midStr = Number.isFinite(data.middle) ? data.middle.toFixed(p) : '--';
+        const display = midStr === '--' ? '--' : `$${midStr}`;
+
+        if (exchange === 'BINANCE') {
+            const el = document.getElementById('depth-last-binance');
+            if (el) el.textContent = display;
+        } else {
+            const el = document.getElementById('depth-last-okx');
+            if (el) el.textContent = display;
+        }
+        updateHeaderPriceTags();
+        drawDepthChart();
+    }
+
+    function handleDepthOrderbookUpdate(data, exchange) {
+        if (!data || !data.bids || !data.asks) return;
+        if (!depthState.exchanges[exchange]) return;
+
+        depthState.exchanges[exchange].orderbook = { bids: data.bids, asks: data.asks };
+        drawDepthChart();
+    }
+
+    function handleTickLevelClick(level) {
+        const index = Math.max(0, Math.min(DEPTH_TICK_LEVEL_MULTIPLIERS.length - 1, level - 1));
+        depthState.tickLevelIndex = index;
+
+        const buttons = document.querySelectorAll('.tick-level-btn');
+        buttons.forEach(btn => {
+            const lvl = parseInt(btn.dataset.level, 10);
+            if (lvl === level) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        drawDepthChart();
+    }
+
+    function handleDepthWheel(event) {
+        if (getCenterPrice() == null || depthState.lastAggMinPrice == null) {
+            return;
+        }
+        event.preventDefault();
+        const zoomIn = event.deltaY < 0;
+        const factor = zoomIn ? 0.8 : 1.25;
+
+        const fullRange = (depthState.lastAggMaxPrice - depthState.lastAggMinPrice) || (getBucketSize() * 200);
+        let halfRange = depthState.viewHalfRange || (fullRange / 2);
+        halfRange *= factor;
+
+        const minHalf = getBucketSize() * 5;
+        const maxHalf = fullRange / 2;
+
+        if (halfRange < minHalf) halfRange = minHalf;
+        if (maxHalf && halfRange > maxHalf) halfRange = maxHalf;
+
+        depthState.viewHalfRange = halfRange;
+        drawDepthChart();
+    }
+
+    function handleDepthTooltip(event) {
+        const tooltip = document.getElementById('depth-tooltip');
+        if (!tooltip || !depthCanvas || depthBars.length === 0) return;
+
+        const rect = depthCanvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        let hovered = null;
+        for (let i = 0; i < depthBars.length; i++) {
+            const b = depthBars[i];
+            if (x >= b.x && x <= b.x + b.width &&
+                y >= b.y && y <= b.y + b.height) {
+                hovered = b;
+                break;
+            }
+        }
+
+        if (!hovered) {
+            tooltip.style.display = 'none';
+            return;
+        }
+
+        const priceStr = hovered.price.toFixed(depthState.pricePrecision);
+        const cumStr = hovered.cumQty.toFixed(depthState.quantityPrecision);
+        const sideLabel = hovered.side === 'bid' ? 'Bid' : 'Ask';
+        const exchangeLabel = hovered.exchange || '';
+
+        tooltip.innerHTML = `
+            <div><strong>${exchangeLabel} ${sideLabel}</strong></div>
+            <div>Price: $${priceStr}</div>
+            <div>Cumulative: ${cumStr}</div>
+        `;
+        tooltip.style.display = 'block';
+
+        // Position tooltip above the cursor
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const offsetX = 12;
+        const offsetY = 12;
+
+        const top = event.clientY - tooltipRect.height - offsetY;
+        tooltip.style.left = `${event.clientX + offsetX}px`;
+        tooltip.style.top = `${top}px`;
+    }
+
+    async function fetchCommonBases() {
+        try {
+            const r = await fetch(`${FUTURES_BASE_URL}/symbol/common-bases?exchanges=BINANCE,OKX`);
+            const d = await r.json();
+            return Array.isArray(d.bases) ? d.bases : ['BTC', 'ETH'];
+        } catch (e) {
+            console.error('Fetch common bases failed', e);
+            return ['BTC', 'ETH'];
+        }
+    }
+
+    async function selectBase(base) {
+        try {
+            const r = await fetch(`${FUTURES_BASE_URL}/symbol/exists-on-all?exchanges=BINANCE,OKX&base=${encodeURIComponent(base)}`);
+            const d = await r.json();
+            if (!d.existsOnAll || !d.symbols) {
+                console.warn('Base not available on all exchanges:', base);
+                return;
+            }
+            depthState.base = (d.base || base).toUpperCase();
+            depthState.symbolsByExchange = d.symbols;
+
+            const binanceSymbol = depthState.symbolsByExchange.BINANCE;
+            const symbolInfo = await fetchBinanceSymbolInfo(binanceSymbol);
+            if (symbolInfo) {
+                depthState.baseTickSize = symbolInfo.baseTickSize;
+                depthState.pricePrecision = symbolInfo.pricePrecision;
+                depthState.quantityPrecision = symbolInfo.quantityPrecision;
+            }
+
+            DEPTH_EXCHANGES.forEach(ex => {
+                depthState.exchanges[ex].currentPrice = null;
+                depthState.exchanges[ex].orderbook = { bids: {}, asks: {} };
+            });
+            depthState.viewHalfRange = null;
+
+            disconnectAllStreams();
+            connectAllStreams();
+
+            document.getElementById('depth-last-binance').textContent = '--';
+            document.getElementById('depth-last-okx').textContent = '--';
+            updateHeaderPriceTags();
+            drawDepthChart();
+            closeBaseDropdown();
+            const labelEl = document.getElementById('depth-base-select-label');
+            if (labelEl) labelEl.textContent = depthState.base;
+        } catch (e) {
+            console.error('Select base failed', e);
+        }
+    }
+
+    function initDepthPage() {
+        depthCanvas = document.getElementById('depth-canvas');
+        if (!depthCanvas) {
+            console.error('Depth canvas not found');
+            return;
+        }
+        depthCtx = depthCanvas.getContext('2d');
+        resizeDepthCanvas();
+
+        window.addEventListener('resize', resizeDepthCanvas);
+
+        depthCanvas.addEventListener('wheel', handleDepthWheel, { passive: false });
+        depthCanvas.addEventListener('mousemove', handleDepthTooltip);
+        depthCanvas.addEventListener('mouseleave', () => {
+            const tooltip = document.getElementById('depth-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+        });
+
+        const tickButtonsContainer = document.getElementById('tick-level-buttons');
+        if (tickButtonsContainer) {
+            tickButtonsContainer.querySelectorAll('.tick-level-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const level = parseInt(btn.dataset.level, 10);
+                    handleTickLevelClick(level);
+                });
+            });
+        }
+
+        initDepthPanel();
+        initBaseSelect([]);
+
+        const priceContainer = document.getElementById('depth-header-prices');
+        if (priceContainer && !priceContainer._linkChangeInited) {
+            priceContainer._linkChangeInited = true;
+            priceContainer.addEventListener('change', (e) => {
+                const cb = e.target;
+                if (!cb.classList.contains('depth-price-checkbox')) return;
+                const ex = cb.getAttribute('data-exchange');
+                if (!ex) return;
+                const linked = depthState.linkedExchanges;
+                if (cb.checked) {
+                    if (linked.size >= 2) {
+                        const first = linked.values().next().value;
+                        linked.delete(first);
+                    }
+                    linked.add(ex);
+                } else {
+                    linked.delete(ex);
+                }
+                updateHeaderPriceTags();
+            });
+        }
+
+        updateHeaderPriceTags();
+
+        (async () => {
+            const bases = await fetchCommonBases();
+            initBaseSelect(bases);
+            await selectBase(depthState.base);
+        })();
+    }
+
+    function initDepthPanel() {
+        const wrapper = document.getElementById('depth-panel-wrapper');
+        const toggleBtn = document.getElementById('depth-panel-toggle');
+        if (!wrapper || !toggleBtn) return;
+        toggleBtn.addEventListener('click', () => {
+            wrapper.classList.toggle('collapsed');
+            toggleBtn.title = wrapper.classList.contains('collapsed') ? 'Open control panel' : 'Close control panel';
+        });
+        toggleBtn.title = 'Close control panel';
+    }
+
+    let baseSelectInited = false;
+    let commonBasesList = [];
+
+    function renderBaseOptions(bases, filter) {
+        const container = document.getElementById('depth-base-options');
+        if (!container) return;
+        const q = (filter || '').trim().toUpperCase();
+        const list = q ? bases.filter(b => b.toUpperCase().includes(q)) : bases;
+        if (list.length === 0) {
+            container.innerHTML = '<div class="depth-base-option no-results">No results</div>';
+            return;
+        }
+        container.innerHTML = list.map(b => `<div class="depth-base-option" data-base="${b}">${b}</div>`).join('');
+        container.querySelectorAll('.depth-base-option:not(.no-results)').forEach(el => {
+            el.addEventListener('click', () => selectBase(el.dataset.base));
+        });
+    }
+
+    function closeBaseDropdown() {
+        const dropdown = document.getElementById('depth-base-dropdown');
+        const searchInput = document.getElementById('depth-base-search');
+        if (dropdown) dropdown.style.display = 'none';
+        if (searchInput) searchInput.value = '';
+    }
+
+    function initBaseSelect(bases) {
+        commonBasesList = Array.isArray(bases) ? bases : [];
+        const labelEl = document.getElementById('depth-base-select-label');
+        if (labelEl) labelEl.textContent = depthState.base;
+        renderBaseOptions(commonBasesList);
+
+        if (baseSelectInited) return;
+        baseSelectInited = true;
+
+        const btn = document.getElementById('depth-base-select-btn');
+        const dropdown = document.getElementById('depth-base-dropdown');
+        const searchInput = document.getElementById('depth-base-search');
+        if (btn && dropdown) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = dropdown.style.display === 'block';
+                if (isOpen) {
+                    closeBaseDropdown();
+                } else {
+                    dropdown.style.display = 'block';
+                    renderBaseOptions(commonBasesList);
+                    setTimeout(() => searchInput && searchInput.focus(), 50);
+                }
+            });
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', () => renderBaseOptions(commonBasesList, searchInput.value));
+            searchInput.addEventListener('click', (e) => e.stopPropagation());
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeBaseDropdown();
+            });
+        }
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('depth-base-select-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) closeBaseDropdown();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDepthPage);
+    } else {
+        initDepthPage();
+    }
+</script>
+</body>
+</html>
+

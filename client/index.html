@@ -345,7 +345,7 @@
         }
 
         function connectOrderbookSSE() {
-            orderbookEventSource = new EventSource(`http://localhost:8080/future/binance/stream/orderbook?symbol=${currentSymbol}`);
+            orderbookEventSource = new EventSource(`http://localhost:8081/future/binance/stream/orderbook?symbol=${currentSymbol}`);
 
             orderbookEventSource.onmessage = (event) => {
                 try {

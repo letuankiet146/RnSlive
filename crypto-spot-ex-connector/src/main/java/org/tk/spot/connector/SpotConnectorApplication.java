@@ -1,11 +1,15 @@
 package org.tk.spot.connector;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Library entry point for component scanning. Use as a dependency in other projects;
- * do not run as a standalone application.
+ * Spring Boot entry point. Can be used as a dependency or run standalone.
  */
 @SpringBootApplication
 public class SpotConnectorApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpotConnectorApplication.class, args);
+    }
 }
